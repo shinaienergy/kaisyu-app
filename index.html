@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>廃食用油 回収管理システム</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;font-size:14px;color:#1a1a1a;background:#f0f0eb;min-height:100vh;}
+.app{max-width:540px;margin:0 auto;padding:12px 12px 60px;}
+
+/* ヘッダー */
+.hdr{background:#1a1a1a;border-radius:12px;padding:14px 16px;margin-bottom:12px;color:#fff;}
+.hdr-row{display:flex;justify-content:space-between;align-items:flex-start;}
+.hdr h1{font-size:16px;font-weight:700;letter-spacing:.02em;}
+.hdr-sub{font-size:11px;color:#aaa;margin-top:2px;}
+.hdr-stat{font-size:10px;color:#aaa;text-align:right;line-height:1.8;}
+.hdr-stat b{color:#fff;font-weight:600;}
+
+/* タブ */
+.tab-bar{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:12px;}
+.tab-bar::-webkit-scrollbar{display:none;}
+.tb{flex-shrink:0;padding:9px 14px;border-radius:9px;border:1px solid #d8d8d0;background:#fff;cursor:pointer;font-size:12px;color:#666;font-weight:500;transition:all .12s;}
+.tb.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.tb:active{transform:scale(.97);}
+.sec{display:none;}.sec.on{display:block;}
+
+/* カード */
+.card{background:#fff;border:1px solid #e4e4dc;border-radius:14px;padding:16px 18px;margin-bottom:12px;}
+.cl{font-size:10px;font-weight:700;color:#999;margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase;}
+
+/* フォーム */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.fg label{font-size:12px;color:#666;font-weight:500;}
+.fg input,.fg select{width:100%;padding:11px 13px;font-size:15px;border:1.5px solid #ddd;border-radius:9px;background:#fff;color:#1a1a1a;-webkit-appearance:none;appearance:none;}
+.fg select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+.fg input:focus,.fg select:focus{outline:none;border-color:#1a1a1a;box-shadow:0 0 0 3px rgba(26,26,26,.08);}
+.fg textarea{width:100%;padding:11px 13px;font-size:13px;border:1.5px solid #ddd;border-radius:9px;background:#fff;color:#1a1a1a;font-family:monospace;resize:vertical;min-height:80px;}
+.fg textarea:focus{outline:none;border-color:#1a1a1a;}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ボタン */
+.btn-p{width:100%;padding:14px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:15px;font-weight:700;margin-top:4px;letter-spacing:.02em;}
+.btn-p:active{opacity:.8;transform:scale(.98);}
+.btn-s{padding:9px 15px;background:#fff;color:#444;border:1.5px solid #ddd;border-radius:9px;cursor:pointer;font-size:13px;font-weight:500;}
+.btn-s:active{background:#f5f5f0;}
+.btn-d{padding:9px 15px;background:#fff;color:#c0392b;border:1.5px solid #f0c0bb;border-radius:9px;cursor:pointer;font-size:13px;}
+.btn-grp{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+
+/* メトリクス */
+.mc2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.mv{background:#f5f5f0;border-radius:10px;padding:13px 14px;}
+.mv-l{font-size:11px;color:#888;margin-bottom:4px;font-weight:500;}
+.mv-n{font-size:24px;font-weight:700;color:#1a1a1a;line-height:1;}
+.mv-u{font-size:10px;color:#aaa;margin-top:3px;}
+
+/* アラート */
+.al{padding:11px 14px;border-radius:9px;font-size:13px;margin-bottom:12px;display:none;font-weight:500;}
+.al-ok{background:#eaf7ee;color:#1a6b30;border:1.5px solid #a3d9b1;}
+.al-err{background:#fdecea;color:#b83228;border:1.5px solid #f5a9a0;}
+.al-inf{background:#e8f0fd;color:#1a4faa;border:1.5px solid #a8c4f8;}
+
+/* テーブル */
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
+th{font-size:10px;font-weight:700;color:#888;text-align:left;padding:7px 8px;border-bottom:1.5px solid #eee;white-space:nowrap;letter-spacing:.03em;}
+td{padding:9px 8px;border-bottom:1px solid #f0f0ee;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+tr:last-child td{border-bottom:none;}
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+/* バッジ */
+.badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;}
+.bg{background:#e6f7ea;color:#1a6b30;}.bb{background:#e6effe;color:#1a4faa;}.ba{background:#fff3e0;color:#c05800;}.bp{background:#fce4ec;color:#8a0030;}.bgg{background:#f0f0ee;color:#555;}
+
+/* 検索・ドロップダウン */
+.sw{position:relative;margin-bottom:8px;}
+.sw input{width:100%;padding:11px 13px 11px 36px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;color:#1a1a1a;}
+.sw input:focus{outline:none;border-color:#1a1a1a;}
+.si{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:16px;color:#bbb;pointer-events:none;}
+.dd{background:#fff;border:1.5px solid #ddd;border-radius:10px;max-height:220px;overflow-y:auto;display:none;margin-bottom:10px;box-shadow:0 6px 20px rgba(0,0,0,.1);}
+.dd.open{display:block;}
+.ddi{padding:12px 14px;cursor:pointer;border-bottom:1px solid #f5f5f0;}
+.ddi:last-child{border-bottom:none;}
+.ddi:active{background:#f5f5f0;}
+.ddi-name{font-size:13px;font-weight:600;}
+.ddi-sub{font-size:10px;color:#888;margin-top:1px;}
+.sel-tags{display:flex;flex-wrap:wrap;gap:4px;min-height:28px;margin-top:4px;}
+.tag{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:#1a1a1a;color:#fff;border-radius:999px;font-size:12px;font-weight:500;}
+.tx{cursor:pointer;opacity:.6;font-size:14px;line-height:1;}
+.tx:active{opacity:1;}
+
+/* エントリー行 */
+.erow{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #f0f0ee;}
+.erow:last-child{border-bottom:none;}
+.empty{text-align:center;padding:28px;color:#bbb;font-size:13px;}
+
+/* 日別バー */
+.bar-s{height:7px;border-radius:4px;background:#a8c4f8;display:inline-block;vertical-align:middle;}
+.pw{display:flex;align-items:center;gap:7px;}
+
+/* 備考 */
+.sn{font-size:11px;color:#aaa;margin-bottom:10px;line-height:1.6;}
+
+/* Excelインポート専用 */
+.import-zone{border:2px dashed #ccc;border-radius:10px;padding:16px;background:#fafaf8;margin-bottom:10px;}
+.import-zone textarea{border:none;background:transparent;width:100%;min-height:100px;font-size:12px;font-family:monospace;color:#333;resize:vertical;}
+.import-zone textarea:focus{outline:none;}
+.import-zone p{font-size:11px;color:#aaa;margin-bottom:8px;text-align:center;}
+.import-preview{background:#f5f5f0;border-radius:8px;padding:10px 12px;font-size:11px;color:#555;margin-top:8px;display:none;}
+
+/* 報告書 */
+.rep-wrap{background:#fff;border:1px solid #e4e4dc;border-radius:14px;padding:22px;font-size:12px;line-height:1.9;margin-top:12px;}
+.rep-wrap h2{font-size:16px;font-weight:700;text-align:center;}
+.rep-wrap h3{font-size:12px;font-weight:700;margin:16px 0 7px;color:#555;border-left:3px solid #1a1a1a;padding-left:8px;}
+.rep-wrap p{font-size:11px;color:#333;margin-bottom:4px;}
+.rep-wrap table{font-size:11px;}
+.rep-wrap .divider{border:none;border-top:1px solid #eee;margin:14px 0;}
+
+/* スクロールヒント */
+.scroll-hint{font-size:10px;color:#bbb;text-align:right;padding:2px 0 6px;}
+
+@media print{
+  body{background:#fff;}
+  .app{max-width:100%;padding:0;}
+  .tab-bar,.btn-grp,.btn-p,.btn-s,.btn-d,.hdr,.card:not(#print-target){display:none;}
+  #print-target{display:block!important;border:none;padding:0;}
+  .rep-wrap{border:none;padding:0;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hdr">
+    <div class="hdr-row">
+      <div>
+        <h1>&#9790; 廃食用油 回収管理</h1>
+        <div class="hdr-sub" id="hd-date"></div>
+      </div>
+      <div class="hdr-stat" id="hd-stat"></div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tb on" onclick="go('inp')">&#128663; 入力</button>
+    <button class="tb" onclick="go('day')">&#128197; 日次</button>
+    <button class="tb" onclick="go('mon')">&#128202; 月次</button>
+    <button class="tb" onclick="go('rep')">&#128196; 報告書</button>
+    <button class="tb" onclick="go('mst')">&#9881; マスタ</button>
+  </div>
+
+  <!-- ========== 回収入力 ========== -->
+  <div id="sec-inp" class="sec on">
+    <div class="card">
+      <div class="cl">回収データ入力</div>
+      <div id="ia" class="al"></div>
+      <div class="r2">
+        <div class="fg"><label>回収日</label><input type="date" id="i-dt"/></div>
+        <div class="fg"><label>ドライバー</label><select id="i-dr"></select></div>
+      </div>
+      <div class="fg">
+        <label>回収先を検索（複数選択可）</label>
+        <div class="sw">
+          <span class="si">&#128269;</span>
+          <input type="text" id="lsrc" placeholder="店名・住所・グループ名で検索..." oninput="srchL()" onfocus="srchL()" autocomplete="off"/>
+        </div>
+        <div class="dd" id="ldd"></div>
+        <div class="sel-tags" id="sloc"></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>回収量 (L)</label><input type="number" id="i-am" placeholder="45.0" step="0.1" min="0" inputmode="decimal"/></div>
+        <div class="fg"><label>容器数</label><input type="number" id="i-cn" placeholder="2" min="1" inputmode="numeric"/></div>
+      </div>
+      <div class="fg"><label>備考（任意）</label><input type="text" id="i-nt" placeholder="例: 容器汚れあり・次回増量依頼" autocomplete="off"/></div>
+      <button class="btn-p" onclick="addEnt()">登録する</button>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="cl" style="margin:0;">本日の入力済みデータ</div>
+        <span id="td-sum" style="font-size:12px;color:#888;font-weight:600;"></span>
+      </div>
+      <div id="td-log"><div class="empty">まだ登録がありません</div></div>
+    </div>
+  </div>
+
+  <!-- ========== 日次集計 ========== -->
+  <div id="sec-day" class="sec">
+    <div class="card" style="padding:12px 16px;">
+      <div class="fg" style="margin:0;"><label>集計対象日</label><input type="date" id="d-dt" onchange="rnDay()"/></div>
+    </div>
+    <div class="mc2" id="d-mc"></div>
+    <div class="card"><div class="cl">回収先別集計</div><div class="tbl-scroll"><div id="d-lt"></div></div></div>
+    <div class="card"><div class="cl">ドライバー別集計</div><div id="d-dvt"></div></div>
+    <div class="card"><div class="cl">グループ別集計</div><div id="d-grp"></div></div>
+  </div>
+
+  <!-- ========== 月次集計 ========== -->
+  <div id="sec-mon" class="sec">
+    <div class="card" style="padding:12px 16px;">
+      <div class="fg" style="margin:0;"><label>集計対象年月</label><input type="month" id="m-mo" onchange="rnMon()"/></div>
+    </div>
+    <div class="mc2" id="m-mc"></div>
+    <div class="card"><div class="cl">回収先別月次集計</div><div class="tbl-scroll"><div id="m-lt"></div></div></div>
+    <div class="card"><div class="cl">グループ別集計</div><div id="m-grp"></div></div>
+    <div class="card"><div class="cl">ドライバー別月次集計</div><div id="m-dvt"></div></div>
+    <div class="card"><div class="cl">日別推移</div><div id="m-dyt"></div></div>
+    <div class="btn-grp">
+      <button class="btn-s" onclick="expCSV()">&#128190; CSV出力</button>
+      <button class="btn-s" onclick="window.print()">&#128438; 印刷</button>
+    </div>
+  </div>
+
+  <!-- ========== 報告書 ========== -->
+  <div id="sec-rep" class="sec">
+    <div class="card">
+      <div class="cl">報告書設定</div>
+      <div class="r2">
+        <div class="fg"><label>対象年月</label><input type="month" id="r-mo"/></div>
+        <div class="fg"><label>報告先種別</label>
+          <select id="r-dest" onchange="toggleRepFields()">
+            <option value="gov">行政・自治体</option>
+            <option value="biz">取引先企業（バイオ燃料等）</option>
+            <option value="chain">飲食チェーン経理部</option>
+            <option value="int">社内経営層</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label>自社名</label><input type="text" id="r-co" value="廃食油回収サービス株式会社"/></div>
+      <div class="r2">
+        <div class="fg"><label>担当者名</label><input type="text" id="r-pe" placeholder="山田 太郎"/></div>
+        <div class="fg"><label>許可番号等</label><input type="text" id="r-li" placeholder="第〇〇号（任意）"/></div>
+      </div>
+      <div class="fg"><label>宛先名</label><input type="text" id="r-to" placeholder="〇〇市環境局 御中"/></div>
+      <!-- チェーン向け追加フィールド -->
+      <div id="chain-fields" style="display:none;">
+        <div class="fg"><label>チェーン・グループ名</label><input type="text" id="r-chain" placeholder="例: ○○フードグループ"/></div>
+        <div class="fg"><label>対象グループを選択</label><select id="r-grp-sel"><option value="">全店舗（グループ問わず）</option></select></div>
+      </div>
+      <button class="btn-p" onclick="genRep()">報告書を生成する</button>
+    </div>
+    <div id="r-out"></div>
+  </div>
+
+  <!-- ========== マスタ設定 ========== -->
+  <div id="sec-mst" class="sec">
+
+    <!-- ドライバー -->
+    <div class="card">
+      <div class="cl">ドライバー管理</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input type="text" id="nd" placeholder="ドライバー名" style="flex:1;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;"/>
+        <button class="btn-s" onclick="addDrv()" style="white-space:nowrap;">追加</button>
+      </div>
+      <div id="drv-l"></div>
+    </div>
+
+    <!-- Excelインポート（メイン） -->
+    <div class="card">
+      <div class="cl">回収先 一括インポート（Excel対応）</div>
+      <div class="sn">
+        &#127381; <b>Excelから直接貼り付け可能！</b><br>
+        ExcelやGoogleスプレッドシートでセルをコピーして下の欄に貼り付けてください。<br>
+        タブ区切り・カンマ区切り・スペース区切りすべて自動判別します。<br>
+        <b>列順：</b>店名 / カテゴリ（任意）/ 住所（任意）/ グループ名（任意）/ 担当者（任意）
+      </div>
+      <div class="import-zone">
+        <p>↓ ここにExcelのセルをそのまま貼り付け (Ctrl+V / ⌘V)</p>
+        <textarea id="csv-in" placeholder="例（Excelからコピー）:&#10;和食レストランさくら	飲食店	渋谷区〇〇1-1	さくらグループ	山本様&#10;ホテルグランド東京	ホテル・旅館	新宿区〇〇2-2		鈴木様&#10;&#10;または普通のCSV:&#10;中華料理龍鳳,飲食店,港区〇〇,龍鳳グループ" oninput="previewImport()"></textarea>
+      </div>
+      <div class="import-preview" id="imp-prev"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn-p" style="flex:1;padding:11px;" onclick="impCSV()">インポート実行</button>
+        <button class="btn-s" onclick="dlTpl()">Excelテンプレート</button>
+        <button class="btn-s" onclick="clrLocs()" style="color:#c0392b;border-color:#f0c0bb;">全回収先削除</button>
+      </div>
+      <div id="imp-res" class="al" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- 手動追加 -->
+    <div class="card">
+      <div class="cl">回収先 手動追加</div>
+      <div class="r2">
+        <div class="fg"><label>回収先名 *</label><input type="text" id="nl-nm" placeholder="〇〇レストラン"/></div>
+        <div class="fg"><label>カテゴリ</label>
+          <select id="nl-ct">
+            <option>飲食店</option><option>ホテル・旅館</option><option>食品工場</option>
+            <option>スーパー</option><option>給食施設</option><option>病院・福祉施設</option><option>その他</option>
+          </select>
+        </div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>住所（任意）</label><input type="text" id="nl-ad" placeholder="渋谷区..."/></div>
+        <div class="fg"><label>グループ名（任意）</label><input type="text" id="nl-grp" placeholder="例: 〇〇チェーン"/></div>
+      </div>
+      <div class="fg"><label>担当者（任意）</label><input type="text" id="nl-ct2" placeholder="田中様"/></div>
+      <button class="btn-s" onclick="addLoc()" style="width:100%;padding:11px;">追加する</button>
+    </div>
+
+    <!-- 登録済み一覧 -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="cl" style="margin:0;">登録済み回収先</div>
+        <span id="lc" style="font-size:12px;color:#888;font-weight:600;"></span>
+      </div>
+      <div class="sw" style="margin-bottom:10px;">
+        <span class="si">&#128269;</span>
+        <input type="text" id="ms" placeholder="絞り込み検索..." oninput="rnLocL()" style="padding-left:36px;"/>
+      </div>
+      <div id="loc-l"></div>
+    </div>
+
+    <!-- データ管理 -->
+    <div class="card">
+      <div class="cl">データ管理</div>
+      <div class="btn-grp">
+        <button class="btn-s" onclick="genSmpl()">&#9889; サンプルデータ生成</button>
+        <button class="btn-d" onclick="clrEnts()">回収データを全削除</button>
+      </div>
+      <div class="sn">サンプルデータ：登録済みの回収先を使って今月分のテストデータを自動生成します</div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+const S={
+  drivers:['田中 一郎','鈴木 次郎','佐藤 三郎','高橋 四郎','伊藤 五郎','渡辺 六郎','中村 七郎'],
+  locations:[
+    {name:'和食レストランさくら 渋谷店',cat:'飲食店',addr:'渋谷区〇〇1-1',grp:'さくらグループ',ct:'山本様'},
+    {name:'和食レストランさくら 新宿店',cat:'飲食店',addr:'新宿区〇〇2-3',grp:'さくらグループ',ct:'田中様'},
+    {name:'ホテルグランド東京',cat:'ホテル・旅館',addr:'新宿区〇〇3-4',grp:'',ct:'鈴木様'},
+    {name:'中華料理龍鳳 池袋店',cat:'飲食店',addr:'豊島区〇〇5-6',grp:'龍鳳グループ',ct:''},
+    {name:'中華料理龍鳳 上野店',cat:'飲食店',addr:'台東区〇〇2-1',grp:'龍鳳グループ',ct:''},
+    {name:'食品加工センター東京',cat:'食品工場',addr:'江東区〇〇4-5',grp:'',ct:'田中様'},
+    {name:'市立〇〇中学校給食室',cat:'給食施設',addr:'世田谷区〇〇6-7',grp:'',ct:'佐藤様'},
+    {name:'スーパーマルエツ恵比寿店',cat:'スーパー',addr:'渋谷区恵比寿2-2',grp:'マルエツ',ct:'店長'},
+  ],
+  entries:[],
+  sel:[]
+};
+
+/* ---- 永続化 ---- */
+function sv(){try{localStorage.setItem('wos_v4',JSON.stringify({d:S.drivers,l:S.locations,e:S.entries}));}catch(x){}}
+function ld(){
+  try{
+    const p=JSON.parse(localStorage.getItem('wos_v4')||'{}');
+    if(p.d&&p.d.length)S.drivers=p.d;
+    if(p.l&&p.l.length)S.locations=p.l;
+    if(p.e)S.entries=p.e;
+  }catch(x){}
+}
+function td(){return new Date().toISOString().split('T')[0];}
+function tm(){return new Date().toISOString().slice(0,7);}
+function mc(l,n,u){return`<div class="mv"><div class="mv-l">${l}</div><div class="mv-n">${n}</div><div class="mv-u">${u}</div></div>`;}
+
+/* ---- 初期化 ---- */
+function init(){
+  ld();
+  const d=new Date();
+  document.getElementById('hd-date').textContent=d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+'日月火水木金土'[d.getDay()]+'）';
+  document.getElementById('i-dt').value=td();
+  document.getElementById('d-dt').value=td();
+  document.getElementById('m-mo').value=tm();
+  document.getElementById('r-mo').value=tm();
+  rfDrv();rnDrvL();rnLocL();rnTd();updHdr();rfGrpSel();
+}
+
+function updHdr(){
+  const m=tm();
+  const thisM=S.entries.filter(e=>e.date.startsWith(m));
+  const tot=S.entries.reduce((s,e)=>s+e.a,0);
+  const mTot=thisM.reduce((s,e)=>s+e.a,0);
+  document.getElementById('hd-stat').innerHTML=
+    '回収先 <b>'+S.locations.length+'</b>軒 · ドライバー <b>'+S.drivers.length+'</b>名<br>'+
+    '今月 <b>'+mTot.toFixed(1)+'L</b> / 累計 <b>'+tot.toFixed(1)+'L</b>';
+}
+
+function rfDrv(){
+  document.getElementById('i-dr').innerHTML=S.drivers.map(d=>`<option>${d}</option>`).join('');
+}
+
+/* ---- 回収先検索・選択 ---- */
+function srchL(){
+  const q=document.getElementById('lsrc').value.trim().toLowerCase();
+  const dd=document.getElementById('ldd');
+  const hits=q
+    ? S.locations.filter(l=>l.name.toLowerCase().includes(q)||(l.addr||'').toLowerCase().includes(q)||(l.grp||'').toLowerCase().includes(q)).slice(0,20)
+    : S.locations.slice(0,10);
+  if(!hits.length){
+    dd.innerHTML='<div class="ddi" style="color:#bbb;">該当なし</div>';
+    dd.classList.add('open');return;
+  }
+  dd.innerHTML=hits.map(l=>`<div class="ddi" onclick="picL(event,${JSON.stringify(l.name)})">
+    <div class="ddi-name">${l.name}${l.grp?` <span style="font-size:10px;color:#999;font-weight:400;">[${l.grp}]</span>`:''}</div>
+    <div class="ddi-sub">${l.cat}${l.addr?' · '+l.addr:''}</div>
+  </div>`).join('');
+  dd.classList.add('open');
+}
+
+function picL(ev,name){
+  ev.stopPropagation();
+  if(!S.sel.includes(name))S.sel.push(name);
+  document.getElementById('lsrc').value='';
+  document.getElementById('ldd').classList.remove('open');
+  rnSel();
+}
+function rnSel(){
+  document.getElementById('sloc').innerHTML=S.sel.map(n=>
+    `<span class="tag">${n}<span class="tx" onclick="rmSel(${JSON.stringify(n)})">×</span></span>`
+  ).join('');
+}
+function rmSel(n){S.sel=S.sel.filter(x=>x!==n);rnSel();}
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#lsrc')&&!e.target.closest('#ldd'))
+    document.getElementById('ldd').classList.remove('open');
+});
+
+/* ---- 登録 ---- */
+function addEnt(){
+  const dt=document.getElementById('i-dt').value;
+  const dr=document.getElementById('i-dr').value;
+  const locs=S.sel.slice();
+  const am=parseFloat(document.getElementById('i-am').value);
+  const cn=parseInt(document.getElementById('i-cn').value)||null;
+  const nt=document.getElementById('i-nt').value.trim();
+  const al=document.getElementById('ia');
+  if(!dt||!dr||!locs.length||isNaN(am)||am<=0){
+    showAl(al,'err','回収日・ドライバー・回収先・回収量を入力してください');return;
+  }
+  const perAm=Math.round(am/locs.length*10)/10;
+  locs.forEach(loc=>{
+    const locData=S.locations.find(l=>l.name===loc)||{};
+    S.entries.push({id:Date.now()+Math.random(),date:dt,dr,loc,grp:locData.grp||'',a:perAm,cn:cn?Math.ceil(cn/locs.length):null,nt});
+  });
+  S.sel=[];
+  document.getElementById('i-am').value='';
+  document.getElementById('i-cn').value='';
+  document.getElementById('i-nt').value='';
+  rnSel();
+  showAl(al,'ok',locs.length+'件を登録しました（合計 '+am.toFixed(1)+'L）');
+  sv();rnTd();updHdr();
+}
+
+function showAl(el,type,msg){
+  el.className='al al-'+type;el.textContent=msg;el.style.display='block';
+  setTimeout(()=>el.style.display='none',4000);
+}
+
+function rnTd(){
+  const d=document.getElementById('i-dt').value||td();
+  const es=S.entries.filter(e=>e.date===d);
+  const tot=es.reduce((s,e)=>s+e.a,0);
+  document.getElementById('td-sum').textContent=es.length+'件 / '+tot.toFixed(1)+'L';
+  const el=document.getElementById('td-log');
+  if(!es.length){el.innerHTML='<div class="empty">まだ登録がありません</div>';return;}
+  el.innerHTML=es.map(e=>`<div class="erow">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.loc}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">${e.dr}${e.grp?' · '+e.grp:''}${e.nt?' · '+e.nt:''}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <span style="font-size:14px;font-weight:700;">${e.a.toFixed(1)}L</span>
+      <button onclick="delEnt(${JSON.stringify(e.id)})" style="background:#f5f5f0;border:none;cursor:pointer;color:#aaa;font-size:18px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+  </div>`).join('');
+}
+
+function delEnt(id){
+  S.entries=S.entries.filter(e=>Math.abs(e.id-id)>0.001);
+  sv();rnTd();updHdr();
+}
+
+/* ---- タブ切替 ---- */
+function go(t){
+  const tabs=['inp','day','mon','rep','mst'];
+  document.querySelectorAll('.tb').forEach((b,i)=>b.classList.toggle('on',tabs[i]===t));
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sec-'+t).classList.add('on');
+  if(t==='day')rnDay();
+  if(t==='mon')rnMon();
+  if(t==='mst')rnLocL();
+}
+
+/* ---- 日次集計 ---- */
+function rnDay(){
+  const d=document.getElementById('d-dt').value;
+  const es=S.entries.filter(e=>e.date===d);
+  const tot=es.reduce((s,e)=>s+e.a,0);
+  document.getElementById('d-mc').innerHTML=
+    mc('総回収量',tot.toFixed(1),'L')+mc('回収件数',es.length,'件')+
+    mc('稼働回収先',[...new Set(es.map(e=>e.loc))].length,'箇所')+
+    mc('稼働ドライバー',[...new Set(es.map(e=>e.dr))].length,'名');
+
+  // 回収先別
+  const bL={};es.forEach(e=>{bL[e.loc]=(bL[e.loc]||0)+e.a;});
+  const mxL=Math.max(...Object.values(bL),1);
+  const e1=document.getElementById('d-lt');
+  e1.innerHTML=Object.keys(bL).length?
+    '<table><thead><tr><th style="width:42%;">回収先</th><th style="width:20%;">量(L)</th><th>グラフ</th></tr></thead><tbody>'+
+    Object.entries(bL).sort((a,b)=>b[1]-a[1]).map(([n,a])=>`<tr>
+      <td title="${n}">${n}</td><td style="font-weight:700;">${a.toFixed(1)}</td>
+      <td><div class="pw"><div class="bar-s" style="width:${Math.round(a/mxL*80)}px;"></div><span style="font-size:10px;color:#888;">${tot>0?Math.round(a/tot*100):0}%</span></div></td>
+    </tr>`).join('')+'</tbody></table>':
+    '<div class="empty">データがありません</div>';
+
+  // ドライバー別
+  const bD={};es.forEach(e=>{if(!bD[e.dr])bD[e.dr]={a:0,c:0};bD[e.dr].a+=e.a;bD[e.dr].c++;});
+  const e2=document.getElementById('d-dvt');
+  e2.innerHTML=Object.keys(bD).length?
+    '<table><thead><tr><th>ドライバー</th><th>件数</th><th>回収量(L)</th></tr></thead><tbody>'+
+    Object.entries(bD).map(([n,d])=>`<tr><td>${n}</td><td>${d.c}</td><td style="font-weight:700;">${d.a.toFixed(1)}</td></tr>`).join('')+'</tbody></table>':
+    '<div class="empty">データがありません</div>';
+
+  // グループ別
+  const bG={};es.forEach(e=>{const g=e.grp||'（グループなし）';if(!bG[g])bG[g]={a:0,c:0};bG[g].a+=e.a;bG[g].c++;});
+  const e3=document.getElementById('d-grp');
+  e3.innerHTML=Object.keys(bG).length?
+    '<table><thead><tr><th>グループ名</th><th>件数</th><th>回収量(L)</th></tr></thead><tbody>'+
+    Object.entries(bG).sort((a,b)=>b[1].a-a[1].a).map(([n,d])=>`<tr><td>${n}</td><td>${d.c}</td><td style="font-weight:700;">${d.a.toFixed(1)}</td></tr>`).join('')+'</tbody></table>':
+    '<div class="empty">データがありません</div>';
+}
+
+/* ---- 月次集計 ---- */
+function rnMon(){
+  const m=document.getElementById('m-mo').value;
+  const es=S.entries.filter(e=>e.date.startsWith(m));
+  const tot=es.reduce((s,e)=>s+e.a,0);
+  const days=[...new Set(es.map(e=>e.date))].length;
+  document.getElementById('m-mc').innerHTML=
+    mc('月間総量',tot.toFixed(1),'L')+mc('稼働日数',days,'日')+
+    mc('総件数',es.length,'件')+mc('回収先数',[...new Set(es.map(e=>e.loc))].length,'箇所');
+
+  // 回収先別
+  const bL={};
+  es.forEach(e=>{if(!bL[e.loc])bL[e.loc]={t:0,ds:new Set(),c:0,grp:e.grp};bL[e.loc].t+=e.a;bL[e.loc].ds.add(e.date);bL[e.loc].c++;});
+  const e1=document.getElementById('m-lt');
+  e1.innerHTML=Object.keys(bL).length?
+    '<table><thead><tr><th style="width:34%;">回収先</th><th style="width:13%;">日数</th><th style="width:12%;">件数</th><th style="width:20%;">総量L</th><th style="width:21%;">平均L/回</th></tr></thead><tbody>'+
+    Object.entries(bL).sort((a,b)=>b[1].t-a[1].t).map(([n,d])=>`<tr>
+      <td title="${n}">${n}</td><td>${d.ds.size}</td><td>${d.c}</td>
+      <td style="font-weight:700;">${d.t.toFixed(1)}</td><td>${(d.t/d.c).toFixed(1)}</td>
+    </tr>`).join('')+
+    `<tr style="background:#f5f5f0;"><td style="font-weight:700;">合計</td><td>-</td><td>${es.length}</td><td style="font-weight:700;">${tot.toFixed(1)}</td><td>${es.length?(tot/es.length).toFixed(1):'-'}</td></tr>
+    </tbody></table>`:
+    '<div class="empty">データがありません</div>';
+
+  // グループ別
+  const bG={};
+  es.forEach(e=>{const g=e.grp||'（グループなし）';if(!bG[g])bG[g]={t:0,c:0,locs:new Set()};bG[g].t+=e.a;bG[g].c++;bG[g].locs.add(e.loc);});
+  const e3=document.getElementById('m-grp');
+  e3.innerHTML=Object.keys(bG).length?
+    '<table><thead><tr><th>グループ名</th><th>店舗数</th><th>件数</th><th>総量L</th></tr></thead><tbody>'+
+    Object.entries(bG).sort((a,b)=>b[1].t-a[1].t).map(([n,d])=>`<tr>
+      <td><span style="font-weight:600;">${n}</span></td><td>${d.locs.size}</td><td>${d.c}</td><td style="font-weight:700;">${d.t.toFixed(1)}</td>
+    </tr>`).join('')+'</tbody></table>':
+    '<div class="empty">グループが設定されていません（回収先にグループ名を登録してください）</div>';
+
+  // ドライバー別
+  const bD={};es.forEach(e=>{if(!bD[e.dr])bD[e.dr]={t:0,c:0,ds:new Set()};bD[e.dr].t+=e.a;bD[e.dr].c++;bD[e.dr].ds.add(e.date);});
+  const e2=document.getElementById('m-dvt');
+  e2.innerHTML=Object.keys(bD).length?
+    '<table><thead><tr><th>ドライバー</th><th>稼働日</th><th>件数</th><th>総量L</th></tr></thead><tbody>'+
+    Object.entries(bD).map(([n,d])=>`<tr><td>${n}</td><td>${d.ds.size}</td><td>${d.c}</td><td style="font-weight:700;">${d.t.toFixed(1)}</td></tr>`).join('')+'</tbody></table>':
+    '<div class="empty">データがありません</div>';
+
+  // 日別推移
+  const bDy={};es.forEach(e=>{bDy[e.date]=(bDy[e.date]||0)+e.a;});
+  const mxDy=Math.max(...Object.values(bDy),1);
+  const e4=document.getElementById('m-dyt');
+  e4.innerHTML=Object.keys(bDy).length?
+    Object.entries(bDy).sort((a,b)=>a[0]<b[0]?-1:1).map(([dt,a])=>{
+      const dw=new Date(dt).getDay();
+      const isRed=[0,6].includes(dw);
+      const label='日月火水木金土'[dw];
+      return`<div class="erow">
+        <span style="font-size:12px;min-width:86px;${isRed?'color:#c0392b;font-weight:600;':''}">${dt.slice(5).replace('-','/')}（${label}）</span>
+        <div class="pw">
+          <div class="bar-s" style="width:${Math.round(a/mxDy*120)}px;"></div>
+          <span style="font-size:13px;font-weight:700;min-width:56px;text-align:right;">${a.toFixed(1)}L</span>
+        </div>
+      </div>`;
+    }).join(''):
+    '<div class="empty">データがありません</div>';
+}
+
+/* ---- グループセレクタ更新 ---- */
+function rfGrpSel(){
+  const grps=[...new Set(S.locations.map(l=>l.grp).filter(g=>g))].sort();
+  const sel=document.getElementById('r-grp-sel');
+  sel.innerHTML='<option value="">全店舗（グループ問わず）</option>'+
+    grps.map(g=>`<option value="${g}">${g}</option>`).join('');
+}
+
+/* ---- 報告書種別切替 ---- */
+function toggleRepFields(){
+  const dest=document.getElementById('r-dest').value;
+  document.getElementById('chain-fields').style.display=dest==='chain'?'block':'none';
+  const toLabel={'gov':'宛先名（例: ○○市環境局 御中）','biz':'宛先名（例: ○○エネルギー株式会社 御中）','chain':'宛先名（例: ○○フードグループ 経理部 御中）','int':'部署名（任意）'};
+  document.querySelector('label[for="r-to"]')&&(document.querySelector('label[for="r-to"]').textContent=toLabel[dest]||'宛先名');
+}
+
+/* ---- 報告書生成 ---- */
+function genRep(){
+  const m=document.getElementById('r-mo').value;
+  const dest=document.getElementById('r-dest').value;
+  const co=document.getElementById('r-co').value;
+  const pe=document.getElementById('r-pe').value;
+  const li=document.getElementById('r-li').value;
+  const to=document.getElementById('r-to').value;
+  const chainName=document.getElementById('r-chain').value;
+  const grpFilter=document.getElementById('r-grp-sel').value;
+  const [yr,mo]=m.split('-');
+
+  let es=S.entries.filter(e=>e.date.startsWith(m));
+  if(dest==='chain'&&grpFilter)es=es.filter(e=>e.grp===grpFilter);
+
+  const tot=es.reduce((s,e)=>s+e.a,0);
+  const days=[...new Set(es.map(e=>e.date))].length;
+  const bL={};es.forEach(e=>{bL[e.loc]=(bL[e.loc]||0)+e.a;});
+  const bG={};es.forEach(e=>{const g=e.grp||'';if(g){if(!bG[g])bG[g]={t:0,c:0,locs:new Set()};bG[g].t+=e.a;bG[g].c++;bG[g].locs.add(e.loc);}});
+  const bD={};es.forEach(e=>{if(!bD[e.dr])bD[e.dr]={t:0,c:0};bD[e.dr].t+=e.a;bD[e.dr].c++;});
+  const bDy={};es.forEach(e=>{bDy[e.date]=(bDy[e.date]||0)+e.a;});
+
+  const iss=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+
+  const lrows=Object.entries(bL).sort((a,b)=>b[1]-a[1]).map(([n,a])=>{
+    const locData=S.locations.find(l=>l.name===n)||{};
+    return`<tr>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;">${n}</td>
+      ${dest==='chain'?`<td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;color:#888;">${locData.addr||''}</td>`:''}
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:700;">${a.toFixed(1)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;">${tot>0?Math.round(a/tot*100):0}%</td>
+    </tr>`;
+  }).join('');
+
+  const drows=Object.entries(bD).map(([n,d])=>
+    `<tr><td style="padding:5px 8px;border-bottom:1px solid #eee;">${n}</td><td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;">${d.c}</td><td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:700;">${d.t.toFixed(1)}</td></tr>`
+  ).join('');
+
+  const grows=Object.entries(bG).sort((a,b)=>b[1].t-a[1].t).map(([g,d])=>
+    `<tr><td style="padding:5px 8px;border-bottom:1px solid #eee;font-weight:600;">${g}</td><td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:center;">${d.locs.size}</td><td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;">${d.c}</td><td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:700;">${d.t.toFixed(1)}</td></tr>`
+  ).join('');
+
+  const dayrows=Object.entries(bDy).sort((a,b)=>a[0]<b[0]?-1:1).map(([dt,a])=>{
+    const dw='日月火水木金土'[new Date(dt).getDay()];
+    return`<tr><td style="padding:4px 8px;border-bottom:1px solid #eee;">${dt}（${dw}）</td><td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:700;">${a.toFixed(1)}L</td></tr>`;
+  }).join('');
+
+  const titles={
+    gov:`${yr}年${mo}月 廃食用油回収実績報告書`,
+    biz:`${yr}年${mo}月 廃食用油回収実績報告書`,
+    chain:`${yr}年${mo}月 廃食用油回収実績明細書`,
+    int:`${yr}年${mo}月 廃食用油回収 月次業績レポート`
+  };
+  const subtitles={
+    gov:'（行政・自治体提出用）',
+    biz:'（取引先企業・バイオ燃料会社向け）',
+    chain:`（飲食チェーン経理部向け店舗別明細${chainName?' · '+chainName:''})`,
+    int:'（社内経営層向け）'
+  };
+
+  // 本文・追記セクション（報告先別）
+  const intro={
+    gov:'平素よりご高配を賜り厚く御礼申し上げます。廃棄物の処理及び清掃に関する法律に基づき、'+yr+'年'+mo+'月における廃食用油の回収実績をご報告申し上げます。',
+    biz:'平素よりご高配を賜り厚く御礼申し上げます。'+yr+'年'+mo+'月における廃食用油の回収実績および引き渡し数量をご報告申し上げます。',
+    chain:'いつもお世話になっております。'+yr+'年'+mo+'月における貴グループ各店舗からの廃食用油回収実績を下記のとおりご報告申し上げます。ご査収のほどよろしくお願い申し上げます。',
+    int:yr+'年'+mo+'月の廃食用油回収業務の実績をまとめました。'
+  };
+
+  const extra={
+    gov:`<h3>4. 適正処理確認事項</h3>
+    <p>回収した廃食用油はすべて廃掃法に基づく収集運搬許可業者により適正に引き渡しを行い、バイオディーゼル燃料・工業油脂等へ再資源化しております。${li?'（収集運搬許可番号：'+li+'）':''}上記報告内容はすべて事実に相違ないことを誓約いたします。</p>`,
+    biz:`<h3>4. 品質・引き渡し確認</h3>
+    <p>今月の回収油に品質不良・異物混入等の問題は発生しておりません。全回収時にドライバーによる外観・臭気確認を実施済みです。引き渡し数量の計量証明書は別途発行いたします。</p>`,
+    chain:`<h3>5. 請求・精算について</h3>
+    <p>上記明細に基づく請求書・領収証は別途お送りいたします。内容についてご不明点がございましたら担当者までお問い合わせください。</p>`,
+    int:`<h3>4. 課題・次月方針</h3>
+    <p>回収ルートの最適化により輸送コスト削減を継続します。新規回収先の開拓については営業部と連携して推進します。</p>`
+  };
+
+  // チェーン向けは店舗別詳細を前面に出す
+  const chainSection=dest==='chain'?`
+    <h3>2. 店舗別回収明細</h3>
+    <table style="margin-bottom:14px;">
+      <thead><tr>
+        <th style="background:#f5f5f0;padding:6px 8px;">店舗名</th>
+        <th style="background:#f5f5f0;padding:6px 8px;">所在地</th>
+        <th style="background:#f5f5f0;padding:6px 8px;text-align:right;">回収量(L)</th>
+        <th style="background:#f5f5f0;padding:6px 8px;text-align:right;">構成比</th>
+      </tr></thead>
+      <tbody>${lrows||nodata(4)}</tbody>
+      <tr style="background:#f0f0eb;"><td colspan="2" style="padding:5px 8px;font-weight:700;">合計</td><td style="padding:5px 8px;text-align:right;font-weight:700;">${tot.toFixed(1)}</td><td style="padding:5px 8px;text-align:right;">100%</td></tr>
+    </table>
+    <h3>3. 日別回収量</h3>
+    <table style="margin-bottom:14px;">
+      <thead><tr>
+        <th style="background:#f5f5f0;padding:6px 8px;">日付</th>
+        <th style="background:#f5f5f0;padding:6px 8px;text-align:right;">回収量</th>
+      </tr></thead>
+      <tbody>${dayrows||nodata(2)}</tbody>
+    </table>
+  `:`
+    <h3>2. 回収先別実績</h3>
+    <table style="margin-bottom:14px;">
+      <thead><tr>
+        <th style="background:#f5f5f0;padding:6px 8px;">回収先名</th>
+        <th style="background:#f5f5f0;padding:6px 8px;text-align:right;">回収量(L)</th>
+        <th style="background:#f5f5f0;padding:6px 8px;text-align:right;">構成比</th>
+      </tr></thead>
+      <tbody>${lrows||nodata(3)}</tbody>
+      <tr style="background:#f0f0eb;"><td style="padding:5px 8px;font-weight:700;">合計</td><td style="padding:5px 8px;text-align:right;font-weight:700;">${tot.toFixed(1)}</td><td style="padding:5px 8px;text-align:right;">100%</td></tr>
+    </table>
+    ${grows?`<h3>3. グループ別集計</h3>
+    <table style="margin-bottom:14px;">
+      <thead><tr>
+        <th style="background:#f5f5f0;padding:6px 8px;">グループ名</th>
+        <th style="background:#f5f5f0;padding:6px 8px;text-align:center;">店舗数</th>
+        <th style="background:#f5f5f0;padding:6px 8px;text-align:right;">件数</th>
+        <th style="background:#f5f5f0;padding:6px 8px;text-align:right;">総量(L)</th>
+      </tr></thead>
+      <tbody>${grows}</tbody>
+    </table>`:''}
+    <h3>${grows?'4':'3'}. ドライバー別実績</h3>
+    <table style="margin-bottom:14px;">
+      <thead><tr>
+        <th style="background:#f5f5f0;padding:6px 8px;">担当ドライバー</th>
+        <th style="background:#f5f5f0;padding:6px 8px;text-align:right;">件数</th>
+        <th style="background:#f5f5f0;padding:6px 8px;text-align:right;">回収量(L)</th>
+      </tr></thead>
+      <tbody>${drows||nodata(3)}</tbody>
+    </table>
+  `;
+
+  function nodata(cols){return`<tr><td colspan="${cols}" style="text-align:center;padding:10px;color:#bbb;">データなし</td></tr>`;}
+
+  document.getElementById('r-out').innerHTML=`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <span style="font-size:11px;color:#888;">プレビュー</span>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-s" onclick="window.print()">&#128438; 印刷・PDF保存</button>
+      <button class="btn-s" onclick="cpRep()">テキストコピー</button>
+    </div>
+  </div>
+  <div id="print-target">
+  <div class="rep-wrap" id="rb-body">
+    <div style="text-align:right;font-size:10px;color:#888;margin-bottom:14px;">${iss}</div>
+    ${to?`<p style="font-size:12px;margin-bottom:12px;font-weight:600;">${to}</p>`:''}
+    <h2>${titles[dest]}</h2>
+    <p style="text-align:center;font-size:11px;color:#888;margin-top:3px;margin-bottom:16px;">${subtitles[dest]}</p>
+    <div class="divider"></div>
+    <p style="font-size:11px;margin-bottom:14px;">${intro[dest]}</p>
+    <h3>1. 回収実績サマリー</h3>
+    <table style="margin-bottom:14px;">
+      <tr><td style="padding:5px 8px;color:#666;width:140px;">対象期間</td><td style="padding:5px 8px;font-weight:600;">${yr}年${mo}月1日〜${yr}年${mo}月末日</td></tr>
+      <tr><td style="padding:5px 8px;color:#666;">総回収量</td><td style="padding:5px 8px;font-weight:700;font-size:15px;">${tot.toFixed(1)} リットル</td></tr>
+      <tr><td style="padding:5px 8px;color:#666;">回収件数</td><td style="padding:5px 8px;">${es.length} 件</td></tr>
+      <tr><td style="padding:5px 8px;color:#666;">稼働日数</td><td style="padding:5px 8px;">${days} 日</td></tr>
+      <tr><td style="padding:5px 8px;color:#666;">対象回収先</td><td style="padding:5px 8px;">${Object.keys(bL).length} 箇所</td></tr>
+      ${li?`<tr><td style="padding:5px 8px;color:#666;">収集運搬許可番号</td><td style="padding:5px 8px;">${li}</td></tr>`:''}
+    </table>
+    ${chainSection}
+    ${extra[dest]}
+    <div class="divider"></div>
+    <div style="text-align:right;font-size:12px;line-height:1.9;margin-top:14px;">
+      <p style="font-weight:600;">${co}</p>
+      ${pe?`<p>担当：${pe}</p>`:''}
+    </div>
+  </div>
+  </div>`;
+}
+
+function cpRep(){
+  const el=document.getElementById('rb-body');
+  if(el)navigator.clipboard.writeText(el.innerText).then(()=>{
+    event.target.textContent='コピー完了！';
+    setTimeout(()=>event.target.textContent='テキストコピー',2000);
+  });
+}
+
+/* ---- マスタ：ドライバー ---- */
+function addDrv(){
+  const v=document.getElementById('nd').value.trim();
+  if(v&&!S.drivers.includes(v)){S.drivers.push(v);document.getElementById('nd').value='';sv();rnDrvL();rfDrv();}
+}
+function rnDrvL(){
+  document.getElementById('drv-l').innerHTML=S.drivers.map((d,i)=>
+    `<div class="erow"><span style="font-size:13px;font-weight:500;">${d}</span><button onclick="rmDrv(${i})" class="btn-d" style="padding:6px 12px;font-size:12px;">削除</button></div>`
+  ).join('')||'<div class="empty">ドライバーが未登録です</div>';
+}
+function rmDrv(i){S.drivers.splice(i,1);sv();rnDrvL();rfDrv();}
+
+/* ---- マスタ：回収先インポート ---- */
+function parseImportData(raw){
+  if(!raw.trim())return[];
+  const lines=raw.trim().split('\n').filter(l=>l.trim());
+  return lines.map(line=>{
+    // タブ区切り（Excel貼り付け）を優先、次にカンマ区切り
+    const sep=line.includes('\t')?'\t':',';
+    return line.split(sep).map(x=>x.trim().replace(/^["']|["']$/g,''));
+  });
+}
+
+function previewImport(){
+  const raw=document.getElementById('csv-in').value;
+  const rows=parseImportData(raw);
+  const prev=document.getElementById('imp-prev');
+  if(!rows.length){prev.style.display='none';return;}
+  const valid=rows.filter(r=>r[0]);
+  prev.style.display='block';
+  prev.innerHTML=`<b>${valid.length}件</b>を検出しました（先頭3件のプレビュー）：<br>`+
+    valid.slice(0,3).map(r=>`<span style="color:#1a6b30;">&#10003;</span> ${r[0]}${r[1]?' ['+r[1]+']':''}${r[3]?' ('+r[3]+')':''}`).join('<br>');
+}
+
+function impCSV(){
+  const raw=document.getElementById('csv-in').value;
+  const rows=parseImportData(raw);
+  const al=document.getElementById('imp-res');
+  if(!rows.length){showAl(al,'err','データを入力してください');return;}
+  let added=0,skipped=0,updated=0;
+  rows.forEach(p=>{
+    const nm=p[0];
+    if(!nm){skipped++;return;}
+    const existing=S.locations.findIndex(l=>l.name===nm);
+    const newLoc={name:nm,cat:p[1]||'その他',addr:p[2]||'',grp:p[3]||'',ct:p[4]||''};
+    if(existing>=0){
+      S.locations[existing]={...S.locations[existing],...newLoc};
+      updated++;
+    }else{
+      S.locations.push(newLoc);
+      added++;
+    }
+  });
+  sv();rnLocL();updHdr();rfGrpSel();
+  document.getElementById('imp-prev').style.display='none';
+  document.getElementById('csv-in').value='';
+  showAl(al,'ok',`追加 ${added}件 · 更新 ${updated}件（スキップ: ${skipped}件）`);
+  al.style.display='block';
+}
+
+function dlTpl(){
+  // BOM付きUTF-8でExcelが文字化けしないように
+  const header='店名\tカテゴリ\t住所\tグループ名\t担当者名';
+  const rows=[
+    '和食レストランさくら 渋谷店\t飲食店\t渋谷区〇〇1-1\tさくらグループ\t山本様',
+    '和食レストランさくら 新宿店\t飲食店\t新宿区〇〇2-2\tさくらグループ\t田中様',
+    'ホテルグランド東京\tホテル・旅館\t新宿区〇〇3-3\t\t鈴木様',
+    '食品加工センター東京\t食品工場\t江東区〇〇4-4\t\t佐藤様',
+  ];
+  const tsv=header+'\n'+rows.join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/tab-separated-values;charset=utf-8,\uFEFF'+encodeURIComponent(tsv);
+  a.download='回収先インポートテンプレート.tsv';a.click();
+}
+
+function rmLoc(i){S.locations.splice(i,1);sv();rnLocL();updHdr();rfGrpSel();}
+function clrLocs(){S.locations=[];sv();rnLocL();updHdr();rfGrpSel();}
+
+/* ---- マスタ：手動追加 ---- */
+function addLoc(){
+  const nm=document.getElementById('nl-nm').value.trim();
+  if(!nm){return;}
+  const cat=document.getElementById('nl-ct').value;
+  const addr=document.getElementById('nl-ad').value.trim();
+  const grp=document.getElementById('nl-grp').value.trim();
+  const ct=document.getElementById('nl-ct2').value.trim();
+  if(S.locations.find(l=>l.name===nm)){
+    alert(nm+' はすでに登録されています');return;
+  }
+  S.locations.push({name:nm,cat,addr,grp,ct});
+  document.getElementById('nl-nm').value='';
+  document.getElementById('nl-ad').value='';
+  document.getElementById('nl-grp').value='';
+  document.getElementById('nl-ct2').value='';
+  sv();rnLocL();updHdr();rfGrpSel();
+}
+
+/* ---- 回収先一覧表示 ---- */
+function rnLocL(){
+  const q=(document.getElementById('ms')||{value:''}).value.trim().toLowerCase();
+  const fl=q?S.locations.filter(l=>l.name.toLowerCase().includes(q)||(l.addr||'').toLowerCase().includes(q)||(l.grp||'').toLowerCase().includes(q)):S.locations;
+  const lc=document.getElementById('lc');
+  if(lc)lc.textContent=S.locations.length+'軒登録済';
+  const el=document.getElementById('loc-l');if(!el)return;
+  if(!fl.length){el.innerHTML='<div class="empty">該当なし</div>';return;}
+  const catCl={'飲食店':'bb','ホテル・旅館':'bp','食品工場':'ba','スーパー':'bg','給食施設':'bg','病院・福祉施設':'bb','その他':'bgg'};
+  el.innerHTML=fl.slice(0,80).map((l,fi)=>{
+    const realIdx=S.locations.indexOf(l);
+    return`<div class="erow">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.name}</div>
+      <div style="font-size:10px;color:#888;margin-top:2px;">${l.grp?'['+l.grp+'] ':''}<span style="color:#aaa;">${l.addr||''}${l.ct?' · '+l.ct:''}</span></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px;">
+      <span class="badge ${catCl[l.cat]||'bgg'}">${l.cat}</span>
+      <button onclick="rmLoc(${realIdx})" class="btn-d" style="padding:5px 10px;font-size:11px;">削除</button>
+    </div>
+  </div>`;}).join('')+
+  (fl.length>80?`<div style="text-align:center;padding:10px;font-size:11px;color:#aaa;">他 ${fl.length-80}件 · 検索で絞り込んでください</div>`:'');
+}
+
+/* ---- CSV出力 ---- */
+function expCSV(){
+  const m=document.getElementById('m-mo').value;
+  const es=S.entries.filter(e=>e.date.startsWith(m));
+  if(!es.length){alert('データがありません');return;}
+  const rows=['日付,ドライバー,グループ名,回収先,回収量(L),容器数,備考'].concat(
+    es.sort((a,b)=>a.date<b.date?-1:1).map(e=>
+      [e.date,e.dr,e.grp||'','"'+e.loc+'"',e.a.toFixed(1),e.cn||'',e.nt||''].join(',')
+    )
+  );
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(rows.join('\n'));
+  a.download=m+'_廃食用油回収実績.csv';a.click();
+}
+
+/* ---- サンプルデータ ---- */
+function genSmpl(){
+  if(!S.locations.length){alert('先にマスタで回収先を登録してください');return;}
+  const m=tm();const[y,mo]=m.split('-').map(Number);
+  const today_d=new Date().getDate();
+  S.entries=S.entries.filter(e=>!e.date.startsWith(m));
+  for(let day=1;day<=today_d;day++){
+    if(new Date(y,mo-1,day).getDay()===0)continue;
+    const n=Math.min(Math.floor(Math.random()*6)+3,S.locations.length);
+    const locs=[...S.locations].sort(()=>Math.random()-.5).slice(0,n);
+    locs.forEach(loc=>{
+      const dr=S.drivers[Math.floor(Math.random()*S.drivers.length)];
+      const a=Math.round((Math.random()*100+20)*10)/10;
+      const date=y+'-'+String(mo).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+      S.entries.push({id:Date.now()+Math.random(),date,dr,loc:loc.name,grp:loc.grp||'',a,cn:Math.ceil(a/20),nt:''});
+    });
+  }
+  sv();updHdr();rnMon();go('mon');
+}
+
+function clrEnts(){S.entries=[];sv();updHdr();rnTd();}
+
+init();
+</script>
+</body>
+</html>

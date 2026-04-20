@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="回収入力"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#1a1a1a"/>
+<title>回収入力</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
+  font-size:15px;color:#1a1a1a;background:#f0f0eb;min-height:100vh;
+  padding-top:var(--safe-top);
+  padding-bottom:var(--safe-bottom);
+}
+
+/* ヘッダー（ノッチ対応） */
+.hdr{
+  background:#1a1a1a;color:#fff;
+  padding:14px 18px 14px;
+  padding-top:calc(var(--safe-top) + 14px);
+  position:sticky;top:0;z-index:100;
+}
+.hdr-row{display:flex;justify-content:space-between;align-items:center;}
+.hdr h1{font-size:17px;font-weight:700;}
+.hdr-sub{font-size:11px;color:#aaa;margin-top:2px;}
+.hdr-badge{background:#2a2a2a;padding:4px 10px;border-radius:999px;font-size:11px;color:#aaa;}
+.hdr-badge b{color:#fff;}
+
+/* ボトムナビ */
+.nav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:#fff;border-top:1px solid #e4e4dc;
+  display:flex;
+  padding-bottom:var(--safe-bottom);
+  z-index:100;
+}
+.nav-btn{
+  flex:1;padding:12px 4px 10px;
+  background:none;border:none;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:10px;color:#999;font-weight:500;
+  transition:color .15s;
+}
+.nav-btn.on{color:#1a1a1a;}
+.nav-icon{font-size:22px;line-height:1;}
+
+.app{
+  padding:14px 14px;
+  padding-bottom:calc(var(--safe-bottom) + 80px);
+}
+
+/* セクション */
+.sec{display:none;}.sec.on{display:block;}
+
+/* カード */
+.card{background:#fff;border:1px solid #e4e4dc;border-radius:16px;padding:18px;margin-bottom:14px;}
+.cl{font-size:10px;font-weight:700;color:#999;margin-bottom:14px;letter-spacing:.1em;}
+
+/* フォーム（スマホ最適化：大きめタップターゲット） */
+.fg{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.fg label{font-size:13px;color:#555;font-weight:600;}
+.fg input,.fg select{
+  width:100%;padding:13px 14px;font-size:16px;
+  border:1.5px solid #ddd;border-radius:10px;
+  background:#fff;color:#1a1a1a;
+  -webkit-appearance:none;appearance:none;
+}
+.fg select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;
+}
+.fg input:focus,.fg select:focus{outline:none;border-color:#1a1a1a;box-shadow:0 0 0 3px rgba(26,26,26,.08);}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* 登録ボタン（大きく・目立つ） */
+.btn-p{
+  width:100%;padding:17px;
+  background:#1a1a1a;color:#fff;
+  border:none;border-radius:12px;
+  cursor:pointer;font-size:17px;font-weight:700;
+  margin-top:6px;letter-spacing:.03em;
+}
+.btn-p:active{opacity:.75;transform:scale(.98);}
+.btn-p.green{background:#1a6b30;}
+.btn-s{padding:10px 16px;background:#fff;color:#444;border:1.5px solid #ddd;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;}
+.btn-s:active{background:#f5f5f0;}
+.btn-grp{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* アラート */
+.al{padding:13px 16px;border-radius:10px;font-size:14px;margin-bottom:14px;display:none;font-weight:600;}
+.al-ok{background:#eaf7ee;color:#1a6b30;border:1.5px solid #a3d9b1;}
+.al-err{background:#fdecea;color:#b83228;border:1.5px solid #f5a9a0;}
+.al-inf{background:#e8f0fd;color:#1a4faa;border:1.5px solid #a8c4f8;}
+
+/* 検索・ドロップダウン */
+.sw{position:relative;margin-bottom:10px;}
+.sw input{
+  width:100%;padding:13px 14px 13px 40px;
+  font-size:16px;border:1.5px solid #ddd;border-radius:10px;
+  background:#fff;color:#1a1a1a;
+  -webkit-appearance:none;
+}
+.sw input:focus{outline:none;border-color:#1a1a1a;}
+.si{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:18px;color:#bbb;pointer-events:none;}
+.dd{
+  background:#fff;border:1.5px solid #ddd;border-radius:12px;
+  max-height:240px;overflow-y:auto;display:none;margin-bottom:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.12);
+}
+.dd.open{display:block;}
+.ddi{padding:14px 16px;cursor:pointer;border-bottom:1px solid #f5f5f0;}
+.ddi:last-child{border-bottom:none;}
+.ddi:active{background:#f5f5f0;}
+.ddi-name{font-size:14px;font-weight:600;}
+.ddi-sub{font-size:11px;color:#888;margin-top:2px;}
+.sel-tags{display:flex;flex-wrap:wrap;gap:5px;min-height:32px;margin-top:4px;}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:#1a1a1a;color:#fff;border-radius:999px;font-size:13px;font-weight:500;}
+.tx{cursor:pointer;opacity:.5;font-size:16px;line-height:1;}
+.tx:active{opacity:1;}
+
+/* 入力履歴 */
+.erow{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid #f0f0ee;}
+.erow:last-child{border-bottom:none;}
+.empty{text-align:center;padding:32px;color:#ccc;font-size:14px;}
+
+/* 今日の合計バナー */
+.today-banner{
+  background:linear-gradient(135deg,#1a1a1a,#2d2d2d);
+  color:#fff;border-radius:14px;padding:16px 18px;
+  margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;
+}
+.today-banner .num{font-size:28px;font-weight:700;}
+.today-banner .lbl{font-size:11px;color:#aaa;margin-top:2px;}
+
+/* CSV送信パネル */
+.send-panel{background:#e8f0fd;border:1.5px solid #a8c4f8;border-radius:14px;padding:16px 18px;margin-bottom:14px;}
+.send-panel .title{font-size:13px;font-weight:700;color:#1a4faa;margin-bottom:8px;}
+.send-panel p{font-size:12px;color:#1a4faa;margin-bottom:12px;line-height:1.6;}
+
+/* 新規回収先 */
+.new-loc-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;background:#fff3e0;color:#c05800;margin-left:6px;}
+
+/* スクロールバー非表示 */
+.dd::-webkit-scrollbar{display:none;}
+.dd{scrollbar-width:none;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-row">
+    <div>
+      <h1>&#128663; 回収入力</h1>
+      <div class="hdr-sub" id="hd-date"></div>
+    </div>
+    <div class="hdr-badge" id="hd-stat">0件</div>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- ===== 入力タブ ===== -->
+  <div id="sec-inp" class="sec on">
+
+    <div class="today-banner">
+      <div>
+        <div class="lbl">本日の回収合計</div>
+        <div class="num" id="today-tot">0.0 L</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:22px;font-weight:700;" id="today-cnt">0件</div>
+        <div class="lbl" id="today-locs">0箇所</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cl">回収データ入力</div>
+      <div id="ia" class="al"></div>
+
+      <div class="r2">
+        <div class="fg"><label>回収日</label><input type="date" id="i-dt"/></div>
+        <div class="fg">
+          <label>ドライバー</label>
+          <select id="i-dr"></select>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label>回収先 <span style="font-size:11px;color:#aaa;font-weight:400;">（検索して選択）</span></label>
+        <div class="sw">
+          <span class="si">&#128269;</span>
+          <input type="text" id="lsrc" placeholder="店名・住所で検索..." oninput="srchL()" onfocus="srchL()" autocomplete="off" autocorrect="off" spellcheck="false"/>
+        </div>
+        <div class="dd" id="ldd"></div>
+        <div class="sel-tags" id="sloc"></div>
+      </div>
+
+      <div class="r2">
+        <div class="fg">
+          <label>回収量 (L)</label>
+          <input type="number" id="i-am" placeholder="45.0" step="0.1" min="0" inputmode="decimal"/>
+        </div>
+        <div class="fg">
+          <label>容器数</label>
+          <input type="number" id="i-cn" placeholder="2" min="1" inputmode="numeric"/>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label>備考 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意）</span></label>
+        <input type="text" id="i-nt" placeholder="例: 容器汚れあり・次回増量" autocomplete="off"/>
+      </div>
+
+      <button class="btn-p" onclick="addEnt()">登録する</button>
+    </div>
+
+    <!-- 本日の入力履歴 -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="cl" style="margin:0;">本日の入力履歴</div>
+        <button class="btn-s" onclick="go('send')" style="font-size:12px;padding:7px 12px;">送信 &#9654;</button>
+      </div>
+      <div id="td-log"><div class="empty">まだ登録がありません</div></div>
+    </div>
+
+  </div>
+
+  <!-- ===== 送信タブ ===== -->
+  <div id="sec-send" class="sec">
+
+    <div class="send-panel">
+      <div class="title">&#128231; 管理者へデータを送る</div>
+      <p>CSVファイルをダウンロードして、LINE・メールなどで管理者に送ってください。</p>
+      <div id="send-al" class="al"></div>
+      <div class="fg" style="margin-bottom:10px;">
+        <label>送信対象の月</label>
+        <select id="s-mo"></select>
+      </div>
+      <div class="btn-grp">
+        <button class="btn-p" onclick="expCSV()" style="flex:1;">&#128190; CSVをダウンロード</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cl">送信の手順</div>
+      <div style="counter-reset:step;">
+        <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f0f0ee;align-items:flex-start;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">1</div>
+          <div><div style="font-size:14px;font-weight:600;">CSVをダウンロード</div><div style="font-size:12px;color:#888;margin-top:2px;">上のボタンを押すとファイルが保存されます</div></div>
+        </div>
+        <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f0f0ee;align-items:flex-start;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">2</div>
+          <div><div style="font-size:14px;font-weight:600;">LINEまたはメールを開く</div><div style="font-size:12px;color:#888;margin-top:2px;">管理者のトークにファイルを添付して送信</div></div>
+        </div>
+        <div style="display:flex;gap:12px;padding:10px 0;align-items:flex-start;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#1a6b30;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">&#10003;</div>
+          <div><div style="font-size:14px;font-weight:600;">完了！</div><div style="font-size:12px;color:#888;margin-top:2px;">管理者側のシステムでインポートされます</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 月別集計プレビュー -->
+    <div class="card">
+      <div class="cl">今月の入力サマリー</div>
+      <div id="my-summary"></div>
+    </div>
+
+  </div>
+
+  <!-- ===== 回収先追加タブ ===== -->
+  <div id="sec-loc" class="sec">
+    <div class="card">
+      <div class="cl">新規回収先を追加 <span class="new-loc-badge">NEW</span></div>
+      <div id="loc-al" class="al"></div>
+      <div class="fg">
+        <label>回収先名 <span style="color:#c0392b;">*</span></label>
+        <input type="text" id="nl-nm" placeholder="例: 〇〇レストラン 渋谷店" autocomplete="off"/>
+      </div>
+      <div class="fg">
+        <label>カテゴリ</label>
+        <select id="nl-ct">
+          <option>飲食店</option><option>ホテル・旅館</option><option>食品工場</option>
+          <option>スーパー</option><option>給食施設</option><option>病院・福祉施設</option><option>その他</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>住所 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意）</span></label>
+        <input type="text" id="nl-ad" placeholder="例: 渋谷区〇〇1-1" autocomplete="off"/>
+      </div>
+      <div class="fg">
+        <label>グループ・チェーン名 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意）</span></label>
+        <input type="text" id="nl-grp" placeholder="例: 〇〇フードグループ" autocomplete="off"/>
+      </div>
+      <div class="fg">
+        <label>担当者名 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意）</span></label>
+        <input type="text" id="nl-ct2" placeholder="例: 山田様" autocomplete="off"/>
+      </div>
+      <button class="btn-p green" onclick="addLoc()">追加する</button>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="cl" style="margin:0;">登録済み回収先</div>
+        <span id="loc-cnt" style="font-size:12px;color:#888;font-weight:600;"></span>
+      </div>
+      <div class="sw" style="margin-bottom:10px;">
+        <span class="si">&#128269;</span>
+        <input type="text" id="loc-srch" placeholder="絞り込み..." oninput="rnLocL()" style="padding-left:40px;width:100%;padding:12px 14px 12px 40px;font-size:15px;border:1.5px solid #ddd;border-radius:10px;background:#fff;"/>
+      </div>
+      <div id="loc-l"></div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ボトムナビ -->
+<div class="nav">
+  <button class="nav-btn on" id="nav-inp" onclick="go('inp')">
+    <span class="nav-icon">&#9997;&#65039;</span>
+    <span>入力</span>
+  </button>
+  <button class="nav-btn" id="nav-send" onclick="go('send')">
+    <span class="nav-icon">&#128231;</span>
+    <span>送信</span>
+  </button>
+  <button class="nav-btn" id="nav-loc" onclick="go('loc')">
+    <span class="nav-icon">&#10133;</span>
+    <span>回収先追加</span>
+  </button>
+</div>
+
+<script>
+/* ===== データ ===== */
+const S={
+  drivers:[],
+  locations:[],
+  entries:[],
+  sel:[]
+};
+
+const KEY='wos_v4'; /* 管理者アプリと同じキー → 同じブラウザなら共有できる */
+
+function sv(){
+  try{localStorage.setItem(KEY,JSON.stringify({d:S.drivers,l:S.locations,e:S.entries}));}catch(x){}
+}
+function ld(){
+  try{
+    const p=JSON.parse(localStorage.getItem(KEY)||'{}');
+    if(p.d&&p.d.length)S.drivers=p.d;
+    if(p.l&&p.l.length)S.locations=p.l;
+    if(p.e)S.entries=p.e;
+  }catch(x){}
+  /* デフォルト：ドライバー・回収先未登録なら案内用ダミーは入れない */
+}
+function td(){return new Date().toISOString().split('T')[0];}
+function tm(){return new Date().toISOString().slice(0,7);}
+
+/* ===== 初期化 ===== */
+function init(){
+  ld();
+  const d=new Date();
+  document.getElementById('hd-date').textContent=
+    d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+'日月火水木金土'[d.getDay()]+'）';
+  document.getElementById('i-dt').value=td();
+  rfDrv();
+  rnTd();
+  updHdr();
+  buildMonthSel();
+  rnLocL();
+}
+
+function updHdr(){
+  const es=S.entries.filter(e=>e.date===document.getElementById('i-dt').value||td());
+  const todayEs=S.entries.filter(e=>e.date===td());
+  const tot=todayEs.reduce((s,e)=>s+e.a,0);
+  const locs=[...new Set(todayEs.map(e=>e.loc))];
+  document.getElementById('hd-stat').innerHTML='今日 <b>'+todayEs.length+'件</b>';
+  document.getElementById('today-tot').textContent=tot.toFixed(1)+' L';
+  document.getElementById('today-cnt').textContent=todayEs.length+'件';
+  document.getElementById('today-locs').textContent=locs.length+'箇所';
+}
+
+function rfDrv(){
+  const sel=document.getElementById('i-dr');
+  if(!S.drivers.length){
+    sel.innerHTML='<option value="">（マスタにドライバー未登録）</option>';
+    return;
+  }
+  sel.innerHTML=S.drivers.map(d=>`<option>${d}</option>`).join('');
+}
+
+/* ===== タブ切替 ===== */
+function go(t){
+  ['inp','send','loc'].forEach(id=>{
+    document.getElementById('sec-'+id).classList.toggle('on',id===t);
+    document.getElementById('nav-'+id).classList.toggle('on',id===t);
+  });
+  if(t==='send')rnSummary();
+  if(t==='loc')rnLocL();
+}
+
+/* ===== 回収先検索 ===== */
+function srchL(){
+  const q=document.getElementById('lsrc').value.trim().toLowerCase();
+  const dd=document.getElementById('ldd');
+  const hits=q
+    ? S.locations.filter(l=>
+        l.name.toLowerCase().includes(q)||
+        (l.addr||'').toLowerCase().includes(q)||
+        (l.grp||'').toLowerCase().includes(q)
+      ).slice(0,20)
+    : S.locations.slice(0,12);
+  if(!hits.length){
+    dd.innerHTML='<div class="ddi" style="color:#bbb;font-size:13px;">該当なし ― 「回収先追加」タブから登録できます</div>';
+    dd.classList.add('open');return;
+  }
+  dd.innerHTML=hits.map(l=>`<div class="ddi" onclick="picL(event,${JSON.stringify(l.name)})">
+    <div class="ddi-name">${l.name}${l.grp?` <span style="font-size:10px;color:#aaa;font-weight:400;">[${l.grp}]</span>`:''}</div>
+    <div class="ddi-sub">${l.cat}${l.addr?' · '+l.addr:''}</div>
+  </div>`).join('');
+  dd.classList.add('open');
+}
+function picL(ev,name){
+  ev.stopPropagation();
+  if(!S.sel.includes(name))S.sel.push(name);
+  document.getElementById('lsrc').value='';
+  document.getElementById('ldd').classList.remove('open');
+  rnSel();
+}
+function rnSel(){
+  document.getElementById('sloc').innerHTML=S.sel.map(n=>
+    `<span class="tag">${n}<span class="tx" onclick="rmSel(${JSON.stringify(n)})">×</span></span>`
+  ).join('');
+}
+function rmSel(n){S.sel=S.sel.filter(x=>x!==n);rnSel();}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#lsrc')&&!e.target.closest('#ldd'))
+    document.getElementById('ldd').classList.remove('open');
+});
+
+/* ===== 登録 ===== */
+function addEnt(){
+  const dt=document.getElementById('i-dt').value;
+  const dr=document.getElementById('i-dr').value;
+  const locs=S.sel.slice();
+  const am=parseFloat(document.getElementById('i-am').value);
+  const cn=parseInt(document.getElementById('i-cn').value)||null;
+  const nt=document.getElementById('i-nt').value.trim();
+  const al=document.getElementById('ia');
+  if(!dt){showAl(al,'err','回収日を選択してください');return;}
+  if(!dr||dr===''){showAl(al,'err','ドライバーを選択してください（マスタで登録が必要です）');return;}
+  if(!locs.length){showAl(al,'err','回収先を検索して選択してください');return;}
+  if(isNaN(am)||am<=0){showAl(al,'err','回収量を入力してください');return;}
+  const perAm=Math.round(am/locs.length*10)/10;
+  locs.forEach(loc=>{
+    const locData=S.locations.find(l=>l.name===loc)||{};
+    S.entries.push({
+      id:Date.now()+Math.random(),
+      date:dt,dr,loc,
+      grp:locData.grp||'',
+      a:perAm,
+      cn:cn?Math.ceil(cn/locs.length):null,
+      nt
+    });
+  });
+  S.sel=[];
+  document.getElementById('i-am').value='';
+  document.getElementById('i-cn').value='';
+  document.getElementById('i-nt').value='';
+  rnSel();
+  showAl(al,'ok','✓ '+locs.length+'件登録しました（'+am.toFixed(1)+'L）');
+  sv();rnTd();updHdr();
+  /* スクロールをフォームトップへ */
+  document.getElementById('ia').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function showAl(el,type,msg){
+  el.className='al al-'+type;el.textContent=msg;el.style.display='block';
+  setTimeout(()=>el.style.display='none',4000);
+}
+
+/* ===== 本日履歴 ===== */
+function rnTd(){
+  const d=document.getElementById('i-dt').value||td();
+  const es=S.entries.filter(e=>e.date===d);
+  const el=document.getElementById('td-log');
+  if(!es.length){el.innerHTML='<div class="empty">まだ登録がありません</div>';return;}
+  el.innerHTML=es.map(e=>`<div class="erow">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.loc}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">${e.dr}${e.grp?' · '+e.grp:''}${e.nt?' · '+e.nt:''}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <span style="font-size:16px;font-weight:700;">${e.a.toFixed(1)}L</span>
+      <button onclick="delEnt(${JSON.stringify(e.id)})" style="background:#f5f5f0;border:none;cursor:pointer;color:#bbb;font-size:20px;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
+    </div>
+  </div>`).join('');
+  updHdr();
+}
+function delEnt(id){
+  S.entries=S.entries.filter(e=>Math.abs(e.id-id)>0.001);
+  sv();rnTd();updHdr();
+}
+
+/* ===== 送信 ===== */
+function buildMonthSel(){
+  const sel=document.getElementById('s-mo');
+  const months=[];
+  const now=new Date();
+  for(let i=0;i<6;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const v=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const lbl=d.getFullYear()+'年'+(d.getMonth()+1)+'月';
+    months.push(`<option value="${v}">${lbl}</option>`);
+  }
+  sel.innerHTML=months.join('');
+}
+
+function rnSummary(){
+  const m=document.getElementById('s-mo').value;
+  const es=S.entries.filter(e=>e.date.startsWith(m));
+  const tot=es.reduce((s,e)=>s+e.a,0);
+  const days=[...new Set(es.map(e=>e.date))].length;
+  const locs=[...new Set(es.map(e=>e.loc))].length;
+  document.getElementById('my-summary').innerHTML=es.length?`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div style="background:#f5f5f0;border-radius:10px;padding:12px;">
+        <div style="font-size:11px;color:#888;margin-bottom:3px;">総回収量</div>
+        <div style="font-size:22px;font-weight:700;">${tot.toFixed(1)}</div>
+        <div style="font-size:10px;color:#aaa;">リットル</div>
+      </div>
+      <div style="background:#f5f5f0;border-radius:10px;padding:12px;">
+        <div style="font-size:11px;color:#888;margin-bottom:3px;">回収件数</div>
+        <div style="font-size:22px;font-weight:700;">${es.length}</div>
+        <div style="font-size:10px;color:#aaa;">件</div>
+      </div>
+      <div style="background:#f5f5f0;border-radius:10px;padding:12px;">
+        <div style="font-size:11px;color:#888;margin-bottom:3px;">稼働日数</div>
+        <div style="font-size:22px;font-weight:700;">${days}</div>
+        <div style="font-size:10px;color:#aaa;">日</div>
+      </div>
+      <div style="background:#f5f5f0;border-radius:10px;padding:12px;">
+        <div style="font-size:11px;color:#888;margin-bottom:3px;">回収先数</div>
+        <div style="font-size:22px;font-weight:700;">${locs}</div>
+        <div style="font-size:10px;color:#aaa;">箇所</div>
+      </div>
+    </div>`
+  :'<div class="empty">この月のデータがありません</div>';
+}
+
+function expCSV(){
+  const m=document.getElementById('s-mo').value;
+  const es=S.entries.filter(e=>e.date.startsWith(m));
+  const al=document.getElementById('send-al');
+  if(!es.length){showAl(al,'err','この月のデータがありません');return;}
+  const rows=['日付,ドライバー,グループ名,回収先,回収量(L),容器数,備考'].concat(
+    es.sort((a,b)=>a.date<b.date?-1:1).map(e=>
+      [e.date,e.dr,e.grp||'','"'+e.loc+'"',e.a.toFixed(1),e.cn||'',e.nt||''].join(',')
+    )
+  );
+  const [yr,mo]=m.split('-');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(rows.join('\n'));
+  a.download=yr+'年'+mo+'月_回収実績_'+S.drivers[0]||'ドライバー'+'.csv';
+  a.click();
+  showAl(al,'ok','CSVをダウンロードしました。LINEやメールで管理者へ送ってください。');
+  rnSummary();
+}
+
+/* ===== 回収先追加 ===== */
+function addLoc(){
+  const nm=document.getElementById('nl-nm').value.trim();
+  const al=document.getElementById('loc-al');
+  if(!nm){showAl(al,'err','回収先名を入力してください');return;}
+  if(S.locations.find(l=>l.name===nm)){showAl(al,'inf',nm+' はすでに登録されています');return;}
+  S.locations.push({
+    name:nm,
+    cat:document.getElementById('nl-ct').value,
+    addr:document.getElementById('nl-ad').value.trim(),
+    grp:document.getElementById('nl-grp').value.trim(),
+    ct:document.getElementById('nl-ct2').value.trim()
+  });
+  document.getElementById('nl-nm').value='';
+  document.getElementById('nl-ad').value='';
+  document.getElementById('nl-grp').value='';
+  document.getElementById('nl-ct2').value='';
+  sv();rnLocL();
+  showAl(al,'ok','「'+nm+'」を追加しました。入力タブから選択できます。');
+}
+
+function rnLocL(){
+  const q=(document.getElementById('loc-srch')||{value:''}).value.trim().toLowerCase();
+  const fl=q?S.locations.filter(l=>l.name.toLowerCase().includes(q)||(l.addr||'').toLowerCase().includes(q)):S.locations;
+  const cnt=document.getElementById('loc-cnt');
+  if(cnt)cnt.textContent=S.locations.length+'軒';
+  const el=document.getElementById('loc-l');if(!el)return;
+  if(!fl.length){el.innerHTML='<div class="empty">登録された回収先がありません</div>';return;}
+  const catCl={'飲食店':'bb','ホテル・旅館':'bp','食品工場':'ba','スーパー':'bg','給食施設':'bg','病院・福祉施設':'bb','その他':'bgg'};
+  const badge=(cat)=>`<span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;${
+    {'飲食店':'background:#e6effe;color:#1a4faa',
+     'ホテル・旅館':'background:#fce4ec;color:#8a0030',
+     '食品工場':'background:#fff3e0;color:#c05800',
+     'スーパー':'background:#e6f7ea;color:#1a6b30',
+     '給食施設':'background:#e6f7ea;color:#1a6b30',
+    }[cat]||'background:#f0f0ee;color:#555'}">${cat}</span>`;
+  el.innerHTML=fl.slice(0,60).map(l=>`<div class="erow">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.name}</div>
+      <div style="font-size:10px;color:#888;margin-top:2px;">${l.grp?'['+l.grp+'] ':''}${l.addr||''}</div>
+    </div>
+    <div style="flex-shrink:0;margin-left:8px;">${badge(l.cat)}</div>
+  </div>`).join('')+(fl.length>60?`<div style="text-align:center;padding:10px;font-size:11px;color:#aaa;">他 ${fl.length-60}件</div>`:'');
+}
+
+init();
+</script>
+</body>
+</html>
