@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/shina/Downloads/driver_5.html -->
+<!-- saved from url=(0046)file:///C:/Users/shina/Downloads/driver_6.html -->
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -179,7 +179,7 @@ window.dispatchEvent(new Event('fb-ready'));
       <h1>🚗 回収入力</h1>
       <div class="hdr-sub" id="hd-date">2026年4月21日（火）</div>
     </div>
-    <div class="hdr-badge" id="hd-stat">今日 <b>0件</b></div>
+    <div class="hdr-badge" id="hd-stat">今日 <b>1件</b></div>
   </div>
 </div>
 
@@ -191,11 +191,11 @@ window.dispatchEvent(new Event('fb-ready'));
     <div class="today-banner">
       <div>
         <div class="lbl">本日の回収合計</div>
-        <div class="num" id="today-tot">0.0 L</div>
+        <div class="num" id="today-tot">30.0 L</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:22px;font-weight:700;" id="today-cnt">0件</div>
-        <div class="lbl" id="today-locs">0箇所</div>
+        <div style="font-size:22px;font-weight:700;" id="today-cnt">1件</div>
+        <div class="lbl" id="today-locs">1箇所</div>
       </div>
     </div>
 
@@ -212,13 +212,13 @@ window.dispatchEvent(new Event('fb-ready'));
       </div>
 
       <div class="fg">
-        <label>回収先 <span style="font-size:11px;color:#aaa;font-weight:400;">（検索して選択）</span></label>
+        <label>回収先</label>
         <div class="sw">
           <span class="si">🔍</span>
-          <input type="text" id="lsrc" placeholder="店名・住所で検索..." oninput="srchL()" onfocus="srchL()" autocomplete="off" autocorrect="off" spellcheck="false">
+          <input type="text" id="lsrc" placeholder="店名・住所で検索..." oninput="srchL()" autocomplete="off" autocorrect="off" spellcheck="false">
         </div>
         <select class="dd" id="ldd" size="1" onchange="picL(event,this.value)"></select>
-        <div class="sel-tags" id="sloc"></div>
+        <div id="sloc" style="margin-top:6px;"></div>
       </div>
 
       <div class="r2">
@@ -237,7 +237,7 @@ window.dispatchEvent(new Event('fb-ready'));
         <input type="text" id="i-nt" placeholder="例: 容器汚れあり・次回増量" autocomplete="off">
       </div>
 
-      <button class="btn-p" onclick="addEnt()">登録する</button>
+      <button class="btn-p" onclick="addEnt()">この回収先を登録する</button>
     </div>
 
     <!-- 本日の入力履歴 -->
@@ -246,7 +246,16 @@ window.dispatchEvent(new Event('fb-ready'));
         <div class="cl" style="margin:0;">本日の入力履歴</div>
         <button class="btn-s" onclick="go(&#39;send&#39;)" style="font-size:12px;padding:7px 12px;">送信 ▶</button>
       </div>
-      <div id="td-log"><div class="empty">まだ登録がありません</div></div>
+      <div id="td-log"><div class="erow">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">花花弁当</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">遠山</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <span style="font-size:16px;font-weight:700;">30.0L</span>
+      <button onclick="delEnt(1776755136179.169)" style="background:#f5f5f0;border:none;cursor:pointer;color:#bbb;font-size:20px;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
+    </div>
+  </div></div>
     </div>
 
   </div>
@@ -842,8 +851,9 @@ function srchL(){
 }
 function picL(ev,name){
   if(!name||name==='')return;
-  if(!S.sel.includes(name))S.sel.push(name);
-  /* 検索欄・ドロップダウンを完全リセット */
+  /* 1件のみ保持（上書き） */
+  S.sel=[name];
+  /* 検索欄・ドロップダウンをリセット */
   document.getElementById('lsrc').value='';
   document.getElementById('lsrc').blur();
   const dd=document.getElementById('ldd');
@@ -851,10 +861,17 @@ function picL(ev,name){
   dd.classList.remove('open');
   dd.size=1;
   rnSel();
+  /* 回収量入力欄にフォーカス */
+  setTimeout(()=>document.getElementById('i-am').focus(),100);
 }
 function rnSel(){
-  document.getElementById('sloc').innerHTML=S.sel.map(n=>
-    `<span class="tag">${n}<span class="tx" onclick="rmSel(${JSON.stringify(n)})">×</span></span>`
+  const el=document.getElementById('sloc');
+  if(!S.sel.length){el.innerHTML='';return;}
+  el.innerHTML=S.sel.map(n=>
+    `<div style="display:flex;align-items:center;justify-content:space-between;background:#1a1a1a;color:#fff;border-radius:10px;padding:12px 16px;font-size:15px;font-weight:600;">
+      <span>${n}</span>
+      <span onclick="rmSel(${JSON.stringify(n)})" style="cursor:pointer;opacity:.6;font-size:22px;margin-left:12px;">×</span>
+    </div>`
   ).join('');
 }
 function rmSel(n){S.sel=S.sel.filter(x=>x!==n);rnSel();}
@@ -889,8 +906,9 @@ function addEnt(){
   document.getElementById('i-am').value='';
   document.getElementById('i-cn').value='';
   document.getElementById('i-nt').value='';
+  document.getElementById('lsrc').value='';
   rnSel();
-  showAl(al,'ok','✓ '+locs.length+'件登録しました（'+am.toFixed(1)+'L）');
+  showAl(al,'ok','✓ 登録しました：'+locs[0]+' '+am.toFixed(1)+'L');
   sv();rnTd();updHdr();
   /* スクロールをフォームトップへ */
   document.getElementById('ia').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -993,7 +1011,7 @@ function buildDataText(){
     });
   });
   txt+='─────────────────\n';
-  txt+='送信者: '+(S.drivers[0]||'ドライバー');
+  txt+='送信者: '+(document.getElementById('i-dr').value||S.drivers[0]||'ドライバー');
   return txt;
 }
 
