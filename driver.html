@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/shina/Downloads/driver_2.html -->
+<!-- saved from url=(0046)file:///C:/Users/shina/Downloads/driver_4.html -->
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -113,15 +113,13 @@ body{
 .si{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:18px;color:#bbb;pointer-events:none;}
 .dd{
   background:#fff;border:1.5px solid #ddd;border-radius:12px;
-  max-height:240px;overflow-y:auto;display:none;margin-bottom:12px;
+  width:100%;display:none;margin-bottom:12px;
+  font-size:15px;padding:4px 0;
   box-shadow:0 8px 24px rgba(0,0,0,.12);
+  -webkit-appearance:none;appearance:none;
 }
 .dd.open{display:block;}
-.ddi{padding:14px 16px;cursor:pointer;border-bottom:1px solid #f5f5f0;}
-.ddi:last-child{border-bottom:none;}
-.ddi:active{background:#f5f5f0;}
-.ddi-name{font-size:14px;font-weight:600;}
-.ddi-sub{font-size:11px;color:#888;margin-top:2px;}
+.dd option{padding:12px 14px;font-size:15px;}
 .sel-tags{display:flex;flex-wrap:wrap;gap:5px;min-height:32px;margin-top:4px;}
 .tag{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:#1a1a1a;color:#fff;border-radius:999px;font-size:13px;font-weight:500;}
 .tx{cursor:pointer;opacity:.5;font-size:16px;line-height:1;}
@@ -219,7 +217,7 @@ window.dispatchEvent(new Event('fb-ready'));
           <span class="si">🔍</span>
           <input type="text" id="lsrc" placeholder="店名・住所で検索..." oninput="srchL()" onfocus="srchL()" autocomplete="off" autocorrect="off" spellcheck="false">
         </div>
-        <div class="dd" id="ldd"></div>
+        <select class="dd" id="ldd" size="1" onchange="picL(event,this.value)"></select>
         <div class="sel-tags" id="sloc"></div>
       </div>
 
@@ -828,25 +826,28 @@ function srchL(){
         l.name.toLowerCase().includes(q)||
         (l.addr||'').toLowerCase().includes(q)||
         (l.grp||'').toLowerCase().includes(q)
-      ).slice(0,20)
-    : S.locations.slice(0,12);
+      ).slice(0,30)
+    : S.locations.slice(0,15);
   if(!hits.length){
-    dd.innerHTML='<div class="ddi" style="color:#bbb;font-size:13px;">該当なし ― 「回収先追加」タブから登録できます</div>';
-    dd.classList.add('open');return;
+    dd.innerHTML='<option value="">該当なし</option>';
+    dd.classList.add('open');
+    dd.size=1;
+    return;
   }
-  dd.innerHTML=hits.map(l=>{
-    const jn=JSON.stringify(l.name);
-    return`<div class="ddi" onpointerdown="picL(event,${jn})">
-    <div class="ddi-name">${l.name}${l.grp?` <span style="font-size:10px;color:#aaa;font-weight:400;">[${l.grp}]</span>`:''}</div>
-    <div class="ddi-sub">${l.cat}${l.addr?' · '+l.addr:''}</div>
-  </div>`;}).join('');
+  /* ネイティブselectに差し替えて確実にタップ選択できるようにする */
+  dd.innerHTML='<option value="">--- タップして選択 ---</option>'+
+    hits.map(l=>`<option value="${l.name.replace(/"/g,'&quot;')}">${l.name}${l.grp?' ['+l.grp+']':''}${l.addr?' '+l.addr:''}</option>`).join('');
+  dd.size=Math.min(hits.length+1,6);
   dd.classList.add('open');
 }
 function picL(ev,name){
-  ev.stopPropagation();
+  if(!name||name==='')return;
   if(!S.sel.includes(name))S.sel.push(name);
   document.getElementById('lsrc').value='';
-  document.getElementById('ldd').classList.remove('open');
+  const dd=document.getElementById('ldd');
+  dd.classList.remove('open');
+  dd.size=1;
+  dd.value='';
   rnSel();
 }
 function rnSel(){
@@ -855,10 +856,7 @@ function rnSel(){
   ).join('');
 }
 function rmSel(n){S.sel=S.sel.filter(x=>x!==n);rnSel();}
-document.addEventListener('pointerdown',e=>{
-  if(!e.target.closest('#lsrc')&&!e.target.closest('#ldd'))
-    document.getElementById('ldd').classList.remove('open');
-});
+/* ドロップダウンは選択後・検索欄blur後に閉じる */
 
 /* ===== 登録 ===== */
 function addEnt(){
