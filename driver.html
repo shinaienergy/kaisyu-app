@@ -153,6 +153,25 @@ body{
 .dd::-webkit-scrollbar{display:none;}
 .dd{scrollbar-width:none;}
 </style>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDe9yDSrZ8tYdiIVQ9n-Ngwt5U21p8KIms",
+    authDomain: "kaisyu-app.firebaseapp.com",
+    projectId: "kaisyu-app",
+    storageBucket: "kaisyu-app.firebasestorage.app",
+    messagingSenderId: "901631889957",
+    appId: "1:901631889957:web:6e9ad122bced1a2a21a5cc"
+  };
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+window.FB_DB = db;
+window.FB = { doc, getDoc, setDoc, onSnapshot, collection, getDocs };
+window.FB_READY = true;
+window.dispatchEvent(new Event('fb-ready'));
+</script>
 </head>
 <body>
 
@@ -239,36 +258,43 @@ body{
 
     <div class="send-panel">
       <div class="title">&#128231; 管理者へデータを送る</div>
-      <p>CSVファイルをダウンロードして、LINE・メールなどで管理者に送ってください。</p>
+      <p>データをコピーして、LINEやメールで管理者に貼り付けて送ってください。</p>
       <div id="send-al" class="al"></div>
-      <div class="fg" style="margin-bottom:10px;">
+      <div class="fg" style="margin-bottom:12px;">
         <label>送信対象の月</label>
-        <select id="s-mo"></select>
+        <select id="s-mo" onchange="rnSummary()"></select>
       </div>
-      <div class="btn-grp">
-        <button class="btn-p" onclick="expCSV()" style="flex:1;">&#128190; CSVをダウンロード</button>
+      <button class="btn-p" onclick="copyData()" id="copy-btn" style="margin-bottom:8px;">&#128203; データをコピーする</button>
+      <button class="btn-p" onclick="shareData()" id="share-btn" style="background:#1a6b30;display:none;">&#128279; LINEで直接送る</button>
+    </div>
+
+    <div class="card" id="after-copy" style="display:none;border:2px solid #1a6b30;">
+      <div style="font-size:14px;font-weight:700;color:#1a6b30;margin-bottom:10px;">&#10003; コピーしました！</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="width:26px;height:26px;border-radius:50%;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">1</div>
+          <div style="font-size:13px;">LINEまたはメールを開いて、管理者のトークへ</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="width:26px;height:26px;border-radius:50%;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">2</div>
+          <div style="font-size:13px;">メッセージ入力欄を長押し →「ペースト」をタップ</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="width:26px;height:26px;border-radius:50%;background:#1a6b30;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">&#10003;</div>
+          <div style="font-size:13px;">送信して完了！</div>
+        </div>
       </div>
     </div>
 
     <div class="card">
-      <div class="cl">送信の手順</div>
-      <div style="counter-reset:step;">
-        <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f0f0ee;align-items:flex-start;">
-          <div style="width:28px;height:28px;border-radius:50%;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">1</div>
-          <div><div style="font-size:14px;font-weight:600;">CSVをダウンロード</div><div style="font-size:12px;color:#888;margin-top:2px;">上のボタンを押すとファイルが保存されます</div></div>
-        </div>
-        <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f0f0ee;align-items:flex-start;">
-          <div style="width:28px;height:28px;border-radius:50%;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">2</div>
-          <div><div style="font-size:14px;font-weight:600;">LINEまたはメールを開く</div><div style="font-size:12px;color:#888;margin-top:2px;">管理者のトークにファイルを添付して送信</div></div>
-        </div>
-        <div style="display:flex;gap:12px;padding:10px 0;align-items:flex-start;">
-          <div style="width:28px;height:28px;border-radius:50%;background:#1a6b30;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">&#10003;</div>
-          <div><div style="font-size:14px;font-weight:600;">完了！</div><div style="font-size:12px;color:#888;margin-top:2px;">管理者側のシステムでインポートされます</div></div>
-        </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="cl" style="margin:0;">送信データのプレビュー</div>
+        <span id="prev-cnt" style="font-size:12px;color:#888;font-weight:600;"></span>
       </div>
+      <div id="data-preview" style="background:#f5f5f0;border-radius:8px;padding:12px;font-size:11px;font-family:monospace;line-height:1.7;max-height:200px;overflow-y:auto;color:#444;white-space:pre-wrap;word-break:break-all;"></div>
     </div>
 
-    <!-- 月別集計プレビュー -->
+    <!-- 月別集計サマリー -->
     <div class="card">
       <div class="cl">今月の入力サマリー</div>
       <div id="my-summary"></div>
@@ -347,7 +373,7 @@ const S={
   sel:[]
 };
 
-const KEY='wos_v4'; /* 管理者アプリと同じキー → 同じブラウザなら共有できる */
+/* Firebase同期モード */
 
 function sv(){
   try{localStorage.setItem(KEY,JSON.stringify({d:S.drivers,l:S.locations,e:S.entries}));}catch(x){}
@@ -365,17 +391,27 @@ function td(){return new Date().toISOString().split('T')[0];}
 function tm(){return new Date().toISOString().slice(0,7);}
 
 /* ===== 初期化 ===== */
-function init(){
-  ld();
+async function init(){
+  showSync('読み込み中...',false);
+  if(window.FB_READY){await ld();}
+  else{await new Promise(r=>window.addEventListener('fb-ready',r,{once:true}));await ld();}
   const d=new Date();
   document.getElementById('hd-date').textContent=
     d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+'日月火水木金土'[d.getDay()]+'）';
   document.getElementById('i-dt').value=td();
-  rfDrv();
-  rnTd();
-  updHdr();
-  buildMonthSel();
-  rnLocL();
+  rfDrv();rnTd();updHdr();buildMonthSel();rnLocL();
+  showSync('同期済み ✓',true);
+}
+function showSync(msg,ok){
+  let el=document.getElementById('sync-st');
+  if(!el){el=document.createElement('div');el.id='sync-st';
+    el.style.cssText='position:fixed;bottom:80px;right:12px;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:600;z-index:9999;transition:opacity .5s;';
+    document.body.appendChild(el);}
+  el.style.background=ok?'#eaf7ee':'#fff8e1';
+  el.style.color=ok?'#1a6b30':'#c05800';
+  el.style.border=ok?'1px solid #a3d9b1':'1px solid #fbbf50';
+  el.textContent=msg;el.style.opacity='1';
+  if(ok)setTimeout(()=>{el.style.opacity='0';},3000);
 }
 
 function updHdr(){
@@ -404,7 +440,7 @@ function go(t){
     document.getElementById('sec-'+id).classList.toggle('on',id===t);
     document.getElementById('nav-'+id).classList.toggle('on',id===t);
   });
-  if(t==='send')rnSummary();
+  if(t==='send'){rnSummary();rnPreview();document.getElementById('after-copy').style.display='none';document.getElementById('share-btn').style.display='none';document.getElementById('copy-btn').textContent='\uD83D\uDCCB データをコピーする';}
   if(t==='loc')rnLocL();
 }
 
@@ -557,23 +593,88 @@ function rnSummary(){
   :'<div class="empty">この月のデータがありません</div>';
 }
 
-function expCSV(){
+function buildDataText(){
   const m=document.getElementById('s-mo').value;
   const es=S.entries.filter(e=>e.date.startsWith(m));
-  const al=document.getElementById('send-al');
-  if(!es.length){showAl(al,'err','この月のデータがありません');return;}
-  const rows=['日付,ドライバー,グループ名,回収先,回収量(L),容器数,備考'].concat(
-    es.sort((a,b)=>a.date<b.date?-1:1).map(e=>
-      [e.date,e.dr,e.grp||'','"'+e.loc+'"',e.a.toFixed(1),e.cn||'',e.nt||''].join(',')
-    )
-  );
+  if(!es.length)return null;
   const [yr,mo]=m.split('-');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(rows.join('\n'));
-  a.download=yr+'年'+mo+'月_回収実績_'+S.drivers[0]||'ドライバー'+'.csv';
-  a.click();
-  showAl(al,'ok','CSVをダウンロードしました。LINEやメールで管理者へ送ってください。');
-  rnSummary();
+  const tot=es.reduce((s,e)=>s+e.a,0);
+  let txt='【廃食用油回収データ】\n';
+  txt+=yr+'年'+mo+'月分 / '+es.length+'件 / 合計'+tot.toFixed(1)+'L\n';
+  txt+='─────────────────\n';
+  const byDate={};
+  es.forEach(e=>{if(!byDate[e.date])byDate[e.date]=[];byDate[e.date].push(e);});
+  Object.keys(byDate).sort().forEach(dt=>{
+    const dw='日月火水木金土'[new Date(dt).getDay()];
+    txt+=dt.slice(5).replace('-','/')+'('+dw+') ';
+    const dayTot=byDate[dt].reduce((s,e)=>s+e.a,0);
+    txt+='計'+dayTot.toFixed(1)+'L\n';
+    byDate[dt].forEach(e=>{
+      txt+='  ・'+e.loc+' '+e.a.toFixed(1)+'L';
+      if(e.nt)txt+=' ['+e.nt+']';
+      txt+='\n';
+    });
+  });
+  txt+='─────────────────\n';
+  txt+='送信者: '+(S.drivers[0]||'ドライバー');
+  return txt;
+}
+
+function rnPreview(){
+  const txt=buildDataText();
+  const prev=document.getElementById('data-preview');
+  const cnt=document.getElementById('prev-cnt');
+  if(!txt){
+    prev.textContent='この月のデータがありません';
+    if(cnt)cnt.textContent='';
+    return;
+  }
+  prev.textContent=txt;
+  const m=document.getElementById('s-mo').value;
+  const es=S.entries.filter(e=>e.date.startsWith(m));
+  if(cnt)cnt.textContent=es.length+'件';
+}
+
+function copyData(){
+  const txt=buildDataText();
+  const al=document.getElementById('send-al');
+  if(!txt){showAl(al,'err','この月のデータがありません');return;}
+  navigator.clipboard.writeText(txt).then(()=>{
+    document.getElementById('after-copy').style.display='block';
+    document.getElementById('copy-btn').textContent='✓ コピー済み';
+    /* Web Share API が使えるならLINEボタンを表示 */
+    if(navigator.share){
+      document.getElementById('share-btn').style.display='block';
+    }
+    setTimeout(()=>{
+      document.getElementById('copy-btn').textContent='📋 データをコピーする';
+    },3000);
+  }).catch(()=>{
+    /* clipboard API が使えない場合はテキストを選択状態にする */
+    const prev=document.getElementById('data-preview');
+    const range=document.createRange();
+    range.selectNodeContents(prev);
+    const sel=window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    showAl(al,'inf','テキストを選択しました。長押し→「コピー」してください。');
+  });
+}
+
+function shareData(){
+  const txt=buildDataText();
+  if(!txt||!navigator.share)return;
+  const m=document.getElementById('s-mo').value;
+  const [yr,mo]=m.split('-');
+  navigator.share({
+    title:yr+'年'+mo+'月 回収データ',
+    text:txt
+  }).catch(()=>{});
+}
+
+function expCSV(){
+  /* 後方互換のため残す - copyDataに委譲 */
+  copyData();
 }
 
 /* ===== 回収先追加 ===== */

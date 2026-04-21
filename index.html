@@ -126,6 +126,25 @@ tr:last-child td{border-bottom:none;}
   .rep-wrap{border:none;padding:0;}
 }
 </style>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDe9yDSrZ8tYdiIVQ9n-Ngwt5U21p8KIms",
+    authDomain: "kaisyu-app.firebaseapp.com",
+    projectId: "kaisyu-app",
+    storageBucket: "kaisyu-app.firebasestorage.app",
+    messagingSenderId: "901631889957",
+    appId: "1:901631889957:web:6e9ad122bced1a2a21a5cc"
+  };
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+window.FB_DB = db;
+window.FB = { doc, getDoc, setDoc, onSnapshot, collection, getDocs };
+window.FB_READY = true;
+window.dispatchEvent(new Event('fb-ready'));
+</script>
 </head>
 <body>
 <div class="app">
@@ -339,23 +358,36 @@ const S={
   sel:[]
 };
 
-/* ---- 永続化 ---- */
-function sv(){try{localStorage.setItem('wos_v4',JSON.stringify({d:S.drivers,l:S.locations,e:S.entries}));}catch(x){}}
-function ld(){
+/* ---- Firebase同期 ---- */
+async function sv(){
   try{
-    const p=JSON.parse(localStorage.getItem('wos_v4')||'{}');
-    if(p.d&&p.d.length)S.drivers=p.d;
-    if(p.l&&p.l.length)S.locations=p.l;
-    if(p.e)S.entries=p.e;
-  }catch(x){}
+    const db=window.FB_DB;
+    const {doc,setDoc}=window.FB;
+    await setDoc(doc(db,'app','master'),{d:S.drivers,l:S.locations,ts:Date.now()});
+    await setDoc(doc(db,'app','entries'),{e:S.entries,ts:Date.now()});
+  }catch(x){
+    try{localStorage.setItem('wos_v4',JSON.stringify({d:S.drivers,l:S.locations,e:S.entries}));}catch(e){}
+  }
+}
+async function ld(){
+  try{
+    const db=window.FB_DB;
+    const {doc,getDoc}=window.FB;
+    const [mSnap,eSnap]=await Promise.all([getDoc(doc(db,'app','master')),getDoc(doc(db,'app','entries'))]);
+    if(mSnap.exists()){const m=mSnap.data();if(m.d&&m.d.length)S.drivers=m.d;if(m.l&&m.l.length)S.locations=m.l;}
+    if(eSnap.exists()){const e=eSnap.data();if(e.e)S.entries=e.e;}
+  }catch(x){
+    try{const p=JSON.parse(localStorage.getItem('wos_v4')||'{}');if(p.d&&p.d.length)S.drivers=p.d;if(p.l&&p.l.length)S.locations=p.l;if(p.e)S.entries=p.e;}catch(e){}
+  }
 }
 function td(){return new Date().toISOString().split('T')[0];}
 function tm(){return new Date().toISOString().slice(0,7);}
 function mc(l,n,u){return`<div class="mv"><div class="mv-l">${l}</div><div class="mv-n">${n}</div><div class="mv-u">${u}</div></div>`;}
 
 /* ---- 初期化 ---- */
-function init(){
-  ld();
+async function init(){
+  showSyncStatus('読み込み中...',false);
+  await ldWhenReady();
   const d=new Date();
   document.getElementById('hd-date').textContent=d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+'日月火水木金土'[d.getDay()]+'）';
   document.getElementById('i-dt').value=td();
@@ -363,6 +395,23 @@ function init(){
   document.getElementById('m-mo').value=tm();
   document.getElementById('r-mo').value=tm();
   rfDrv();rnDrvL();rnLocL();rnTd();updHdr();rfGrpSel();
+  showSyncStatus('同期済み ✓',true);
+}
+async function ldWhenReady(){
+  if(window.FB_READY){await ld();return;}
+  await new Promise(r=>window.addEventListener('fb-ready',r,{once:true}));
+  await ld();
+}
+function showSyncStatus(msg,ok){
+  let el=document.getElementById('sync-status');
+  if(!el){el=document.createElement('div');el.id='sync-status';
+    el.style.cssText='position:fixed;bottom:16px;right:16px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;z-index:9999;transition:opacity .5s;';
+    document.body.appendChild(el);}
+  el.style.background=ok?'#eaf7ee':'#fff3e0';
+  el.style.color=ok?'#1a6b30':'#c05800';
+  el.style.border=ok?'1px solid #a3d9b1':'1px solid #fbbf50';
+  el.textContent=msg;el.style.opacity='1';
+  if(ok)setTimeout(()=>{el.style.opacity='0';},3000);
 }
 
 function updHdr(){
