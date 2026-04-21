@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/shina/Downloads/driver_4.html -->
+<!-- saved from url=(0046)file:///C:/Users/shina/Downloads/driver_5.html -->
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -121,8 +121,8 @@ body{
 .dd.open{display:block;}
 .dd option{padding:12px 14px;font-size:15px;}
 .sel-tags{display:flex;flex-wrap:wrap;gap:5px;min-height:32px;margin-top:4px;}
-.tag{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:#1a1a1a;color:#fff;border-radius:999px;font-size:13px;font-weight:500;}
-.tx{cursor:pointer;opacity:.5;font-size:16px;line-height:1;}
+.tag{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#1a1a1a;color:#fff;border-radius:12px;font-size:15px;font-weight:600;margin:3px;}
+.tx{cursor:pointer;opacity:.6;font-size:20px;line-height:1;padding:0 2px;}
 .tx:active{opacity:1;}
 
 /* 入力履歴 */
@@ -843,11 +843,13 @@ function srchL(){
 function picL(ev,name){
   if(!name||name==='')return;
   if(!S.sel.includes(name))S.sel.push(name);
+  /* 検索欄・ドロップダウンを完全リセット */
   document.getElementById('lsrc').value='';
+  document.getElementById('lsrc').blur();
   const dd=document.getElementById('ldd');
+  dd.innerHTML='';
   dd.classList.remove('open');
   dd.size=1;
-  dd.value='';
   rnSel();
 }
 function rnSel(){
