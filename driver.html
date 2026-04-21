@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/shina/Downloads/driver_1.html -->
+<!-- saved from url=(0046)file:///C:/Users/shina/Downloads/driver_2.html -->
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -834,10 +834,12 @@ function srchL(){
     dd.innerHTML='<div class="ddi" style="color:#bbb;font-size:13px;">該当なし ― 「回収先追加」タブから登録できます</div>';
     dd.classList.add('open');return;
   }
-  dd.innerHTML=hits.map(l=>`<div class="ddi" onclick="picL(event,${JSON.stringify(l.name)})">
+  dd.innerHTML=hits.map(l=>{
+    const jn=JSON.stringify(l.name);
+    return`<div class="ddi" onpointerdown="picL(event,${jn})">
     <div class="ddi-name">${l.name}${l.grp?` <span style="font-size:10px;color:#aaa;font-weight:400;">[${l.grp}]</span>`:''}</div>
     <div class="ddi-sub">${l.cat}${l.addr?' · '+l.addr:''}</div>
-  </div>`).join('');
+  </div>`;}).join('');
   dd.classList.add('open');
 }
 function picL(ev,name){
@@ -853,7 +855,7 @@ function rnSel(){
   ).join('');
 }
 function rmSel(n){S.sel=S.sel.filter(x=>x!==n);rnSel();}
-document.addEventListener('click',e=>{
+document.addEventListener('pointerdown',e=>{
   if(!e.target.closest('#lsrc')&&!e.target.closest('#ldd'))
     document.getElementById('ldd').classList.remove('open');
 });
