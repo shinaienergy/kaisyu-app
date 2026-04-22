@@ -128,25 +128,62 @@ tr:last-child td{border-bottom:none;}
 </style>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDe9yDSrZ8tYdiIVQ9n-Ngwt5U21p8KIms",
-    authDomain: "kaisyu-app.firebaseapp.com",
-    projectId: "kaisyu-app",
-    storageBucket: "kaisyu-app.firebasestorage.app",
-    messagingSenderId: "901631889957",
-    appId: "1:901631889957:web:6e9ad122bced1a2a21a5cc"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyDe9yDSrZ8tYdiIVQ9n-Ngwt5U21p8KIms",
+  authDomain: "kaisyu-app.firebaseapp.com",
+  projectId: "kaisyu-app",
+  storageBucket: "kaisyu-app.firebasestorage.app",
+  messagingSenderId: "901631889957",
+  appId: "1:901631889957:web:6e9ad122bced1a2a21a5cc"
+};
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 window.FB_DB = db;
-window.FB = { doc, getDoc, setDoc, onSnapshot, collection, getDocs };
-window.FB_READY = true;
-window.dispatchEvent(new Event('fb-ready'));
+window.FB = { doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, getDocs };
+window.FB_AUTH = auth;
+window.FB_SIGNOUT = () => signOut(auth);
+
+// 管理者メールアドレス（このメールでログインした人だけ管理者として使える）
+const ADMIN_EMAIL = 'shinai.energy@gmail.com';
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    window.FB_USER = user;
+    window.FB_IS_ADMIN = (user.email === ADMIN_EMAIL);
+    window.FB_READY = true;
+    window.dispatchEvent(new Event('fb-ready'));
+  } else {
+    window.FB_USER = null;
+    window.FB_READY = false;
+    window.dispatchEvent(new Event('fb-signout'));
+  }
+});
+window.FB_SIGNIN = () => signInWithPopup(auth, provider);
 </script>
 </head>
 <body>
+<!-- 管理者ログイン画面 -->
+<div id="login-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:#f0f0eb;">
+  <div style="background:#1a1a1a;border-radius:16px;padding:32px 24px;width:100%;max-width:400px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:12px;">&#9790;</div>
+    <div style="color:#fff;font-size:20px;font-weight:700;margin-bottom:6px;">廃食用油 回収管理</div>
+    <div style="color:#aaa;font-size:13px;margin-bottom:32px;">管理者ログイン</div>
+    <button onclick="doAdminLogin()" style="width:100%;padding:14px;background:#fff;color:#1a1a1a;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Googleでログイン
+    </button>
+    <div id="login-err" style="color:#f5a9a0;font-size:12px;margin-top:12px;display:none;"></div>
+  </div>
+  <div style="color:#aaa;font-size:11px;margin-top:16px;">管理者アカウントでログインしてください</div>
+</div>
+
+<!-- アプリ本体 -->
+<div id="app-screen" style="display:none;">
 <div class="app">
 
   <div class="hdr">
@@ -155,7 +192,11 @@ window.dispatchEvent(new Event('fb-ready'));
         <h1>&#9790; 廃食用油 回収管理</h1>
         <div class="hdr-sub" id="hd-date"></div>
       </div>
-      <div class="hdr-stat" id="hd-stat"></div>
+      <div style="text-align:right;">
+        <div class="hdr-stat" id="hd-stat"></div>
+        <div style="font-size:10px;color:#aaa;margin-top:2px;" id="hd-user"></div>
+        <button onclick="doAdminLogout()" style="background:#333;border:none;color:#aaa;font-size:10px;padding:3px 8px;border-radius:999px;cursor:pointer;margin-top:3px;">ログアウト</button>
+      </div>
     </div>
   </div>
 
@@ -273,6 +314,23 @@ window.dispatchEvent(new Event('fb-ready'));
       <div id="drv-l"></div>
     </div>
 
+    <!-- Googleアカウント紐づけ -->
+    <div class="card">
+      <div class="cl">Googleアカウント紐づけ</div>
+      <div class="sn">ドライバーのGoogleメールアドレスと名前を登録します。ドライバーがGoogleログインすると名前が自動でセットされます。</div>
+      <div id="acct-al" class="al"></div>
+      <div class="r2">
+        <div class="fg"><label>ドライバー名</label>
+          <select id="acct-name" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;-webkit-appearance:none;appearance:none;"></select>
+        </div>
+        <div class="fg"><label>Googleメールアドレス</label>
+          <input type="email" id="acct-email" placeholder="driver@gmail.com" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;"/>
+        </div>
+      </div>
+      <button class="btn-s" onclick="saveDriverAccount()" style="width:100%;padding:11px;margin-top:4px;">登録・更新する</button>
+      <div id="acct-list" style="margin-top:12px;"></div>
+    </div>
+
     <!-- Excelインポート（メイン） -->
     <div class="card">
       <div class="cl">回収先 一括インポート（Excel対応）</div>
@@ -340,6 +398,7 @@ window.dispatchEvent(new Event('fb-ready'));
   </div>
 
 </div><!-- /app -->
+</div><!-- /app-screen -->
 
 <script>
 const S={
@@ -384,6 +443,38 @@ function td(){return new Date().toISOString().split('T')[0];}
 function tm(){return new Date().toISOString().slice(0,7);}
 function mc(l,n,u){return`<div class="mv"><div class="mv-l">${l}</div><div class="mv-n">${n}</div><div class="mv-u">${u}</div></div>`;}
 
+/* ---- ログイン制御 ---- */
+function doAdminLogin(){
+  document.getElementById('login-err').style.display='none';
+  window.FB_SIGNIN().then(()=>{}).catch(e=>{
+    document.getElementById('login-err').textContent='ログインできませんでした。管理者アカウントをお使いください。';
+    document.getElementById('login-err').style.display='block';
+  });
+}
+function doAdminLogout(){
+  window.FB_SIGNOUT().then(()=>{
+    document.getElementById('app-screen').style.display='none';
+    document.getElementById('login-screen').style.display='flex';
+  });
+}
+window.addEventListener('fb-ready',()=>{
+  if(!window.FB_IS_ADMIN){
+    document.getElementById('login-err').textContent='このアカウントには管理者権限がありません。';
+    document.getElementById('login-err').style.display='block';
+    window.FB_SIGNOUT();
+    return;
+  }
+  const u=window.FB_USER;
+  document.getElementById('hd-user').textContent=u?u.displayName||u.email:'';
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  init();
+});
+window.addEventListener('fb-signout',()=>{
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+});
+
 /* ---- 初期化 ---- */
 async function init(){
   showSyncStatus('読み込み中...',false);
@@ -394,7 +485,7 @@ async function init(){
   document.getElementById('d-dt').value=td();
   document.getElementById('m-mo').value=tm();
   document.getElementById('r-mo').value=tm();
-  rfDrv();rnDrvL();rnLocL();rnTd();updHdr();rfGrpSel();
+  rfDrv();rnDrvL();rnLocL();rnTd();updHdr();rfGrpSel();rfAcctSel();rnAcctList();
   showSyncStatus('同期済み ✓',true);
 }
 async function ldWhenReady(){
@@ -830,7 +921,7 @@ function cpRep(){
 /* ---- マスタ：ドライバー ---- */
 function addDrv(){
   const v=document.getElementById('nd').value.trim();
-  if(v&&!S.drivers.includes(v)){S.drivers.push(v);document.getElementById('nd').value='';sv();rnDrvL();rfDrv();}
+  if(v&&!S.drivers.includes(v)){S.drivers.push(v);document.getElementById('nd').value='';sv();rnDrvL();rfDrv();rfAcctSel();}
 }
 function rnDrvL(){
   document.getElementById('drv-l').innerHTML=S.drivers.map((d,i)=>
@@ -984,6 +1075,56 @@ function genSmpl(){
 }
 
 function clrEnts(){S.entries=[];sv();updHdr();rnTd();}
+
+/* ---- ドライバーアカウント管理 ---- */
+function rfAcctSel(){
+  const sel=document.getElementById('acct-name');
+  if(!sel)return;
+  sel.innerHTML=S.drivers.map(d=>`<option>${d}</option>`).join('');
+}
+async function saveDriverAccount(){
+  const name=document.getElementById('acct-name').value;
+  const email=document.getElementById('acct-email').value.trim().toLowerCase();
+  const al=document.getElementById('acct-al');
+  if(!name||!email){showSyncStatus('名前とメールを入力してください',false);return;}
+  try{
+    const db=window.FB_DB;
+    const {doc,setDoc,collection,getDocs}=window.FB;
+    // メールでユーザーを検索してuidを取得する代わりに、emailをキーにして保存
+    await setDoc(doc(db,'usersByEmail',email),{name,email,updatedAt:Date.now()});
+    al.className='al al-ok';al.textContent='「'+name+'」（'+email+'）を登録しました';al.style.display='block';
+    document.getElementById('acct-email').value='';
+    setTimeout(()=>al.style.display='none',4000);
+    rnAcctList();
+  }catch(x){
+    al.className='al al-err';al.textContent='登録に失敗しました: '+x.message;al.style.display='block';
+  }
+}
+async function rnAcctList(){
+  const el=document.getElementById('acct-list');if(!el)return;
+  try{
+    const {collection,getDocs}=window.FB;
+    const snap=await getDocs(collection(window.FB_DB,'usersByEmail'));
+    if(snap.empty){el.innerHTML='<div style="font-size:12px;color:#aaa;padding:8px 0;">まだ登録がありません</div>';return;}
+    el.innerHTML=snap.docs.map(d=>{
+      const data=d.data();
+      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid #eee;">
+        <div><div style="font-size:13px;font-weight:500;">${data.name}</div><div style="font-size:11px;color:#888;">${data.email}</div></div>
+        <button onclick="delAcct('${d.id}')" style="background:none;border:0.5px solid #f0c0bb;color:#c0392b;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">削除</button>
+      </div>`;
+    }).join('');
+  }catch(x){el.innerHTML='<div style="font-size:12px;color:#aaa;">読み込み中...</div>';}
+}
+async function delAcct(email){
+  const {doc,deleteDoc}=window.FB;
+  if(!window.FB.deleteDoc){
+    // deleteDocが未インポートの場合はsetDocで無効化
+    await window.FB.setDoc(window.FB.doc(window.FB_DB,'usersByEmail',email),{deleted:true});
+  } else {
+    await deleteDoc(doc(window.FB_DB,'usersByEmail',email));
+  }
+  rnAcctList();
+}
 
 init();
 </script>

@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/shina/Downloads/driver_6.html -->
-<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="回収入力">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1a1a1a">
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="回収入力"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#1a1a1a"/>
 <title>回収入力</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -153,34 +153,81 @@ body{
 </style>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDe9yDSrZ8tYdiIVQ9n-Ngwt5U21p8KIms",
-    authDomain: "kaisyu-app.firebaseapp.com",
-    projectId: "kaisyu-app",
-    storageBucket: "kaisyu-app.firebasestorage.app",
-    messagingSenderId: "901631889957",
-    appId: "1:901631889957:web:6e9ad122bced1a2a21a5cc"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyDe9yDSrZ8tYdiIVQ9n-Ngwt5U21p8KIms",
+  authDomain: "kaisyu-app.firebaseapp.com",
+  projectId: "kaisyu-app",
+  storageBucket: "kaisyu-app.firebasestorage.app",
+  messagingSenderId: "901631889957",
+  appId: "1:901631889957:web:6e9ad122bced1a2a21a5cc"
+};
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 window.FB_DB = db;
 window.FB = { doc, getDoc, setDoc, onSnapshot, collection, getDocs };
-window.FB_READY = true;
-window.dispatchEvent(new Event('fb-ready'));
+window.FB_AUTH = auth;
+window.FB_PROVIDER = provider;
+window.FB_SIGNOUT = () => signOut(auth);
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    window.FB_USER = user;
+    // usersByEmailコレクションからドライバー名を取得
+    try {
+      const email = user.email.toLowerCase();
+      const uSnap = await getDoc(doc(db, 'usersByEmail', email));
+      window.FB_DRIVER_NAME = uSnap.exists() ? uSnap.data().name : null;
+    } catch(e) {
+      window.FB_DRIVER_NAME = null;
+    }
+    window.FB_READY = true;
+    window.dispatchEvent(new Event('fb-ready'));
+  } else {
+    window.FB_USER = null;
+    window.FB_READY = false;
+    window.dispatchEvent(new Event('fb-signout'));
+  }
+});
+window.FB_SIGNIN = () => signInWithPopup(auth, provider);
 </script>
 </head>
 <body>
 
+<!-- ログイン画面 -->
+<div id="login-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:#f0f0eb;">
+  <div style="background:#1a1a1a;border-radius:16px;padding:32px 24px;width:100%;max-width:360px;text-align:center;">
+    <div style="font-size:40px;margin-bottom:12px;">&#128663;</div>
+    <div style="color:#fff;font-size:20px;font-weight:700;margin-bottom:6px;">回収入力アプリ</div>
+    <div style="color:#aaa;font-size:13px;margin-bottom:32px;">廃食用油回収業務システム</div>
+    <button onclick="doLogin()" style="width:100%;padding:14px;background:#fff;color:#1a1a1a;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Googleでログイン
+    </button>
+    <div id="login-err" style="color:#f5a9a0;font-size:12px;margin-top:12px;display:none;"></div>
+  </div>
+  <div style="color:#aaa;font-size:11px;margin-top:20px;">会社のGoogleアカウントでログインしてください</div>
+</div>
+
+<!-- アプリ本体（ログイン後に表示） -->
+<div id="app-screen" style="display:none;">
+
 <div class="hdr">
   <div class="hdr-row">
     <div>
-      <h1>🚗 回収入力</h1>
-      <div class="hdr-sub" id="hd-date">2026年4月21日（火）</div>
+      <h1>&#128663; 回収入力</h1>
+      <div class="hdr-sub" id="hd-date"></div>
     </div>
-    <div class="hdr-badge" id="hd-stat">今日 <b>1件</b></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="hdr-badge" id="hd-stat">0件</div>
+      <button onclick="doLogout()" style="background:#333;border:none;color:#aaa;font-size:11px;padding:4px 10px;border-radius:999px;cursor:pointer;">ログアウト</button>
+    </div>
   </div>
+  <div style="font-size:11px;color:#aaa;margin-top:4px;" id="hd-user"></div>
 </div>
 
 <div class="app">
@@ -191,11 +238,11 @@ window.dispatchEvent(new Event('fb-ready'));
     <div class="today-banner">
       <div>
         <div class="lbl">本日の回収合計</div>
-        <div class="num" id="today-tot">30.0 L</div>
+        <div class="num" id="today-tot">0.0 L</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:22px;font-weight:700;" id="today-cnt">1件</div>
-        <div class="lbl" id="today-locs">1箇所</div>
+        <div style="font-size:22px;font-weight:700;" id="today-cnt">0件</div>
+        <div class="lbl" id="today-locs">0箇所</div>
       </div>
     </div>
 
@@ -204,18 +251,18 @@ window.dispatchEvent(new Event('fb-ready'));
       <div id="ia" class="al"></div>
 
       <div class="r2">
-        <div class="fg"><label>回収日</label><input type="date" id="i-dt"></div>
+        <div class="fg"><label>回収日</label><input type="date" id="i-dt"/></div>
         <div class="fg">
           <label>ドライバー</label>
-          <select id="i-dr"><option>安野</option><option>佐藤</option><option>綿引</option><option>河原</option><option>村田</option><option>朝比奈</option><option>遠山</option></select>
+          <select id="i-dr"></select>
         </div>
       </div>
 
       <div class="fg">
         <label>回収先</label>
         <div class="sw">
-          <span class="si">🔍</span>
-          <input type="text" id="lsrc" placeholder="店名・住所で検索..." oninput="srchL()" autocomplete="off" autocorrect="off" spellcheck="false">
+          <span class="si">&#128269;</span>
+          <input type="text" id="lsrc" placeholder="店名・住所で検索..." oninput="srchL()" autocomplete="off" autocorrect="off" spellcheck="false"/>
         </div>
         <select class="dd" id="ldd" size="1" onchange="picL(event,this.value)"></select>
         <div id="sloc" style="margin-top:6px;"></div>
@@ -224,17 +271,17 @@ window.dispatchEvent(new Event('fb-ready'));
       <div class="r2">
         <div class="fg">
           <label>回収量 (L)</label>
-          <input type="number" id="i-am" placeholder="45.0" step="0.1" min="0" inputmode="decimal">
+          <input type="number" id="i-am" placeholder="45.0" step="0.1" min="0" inputmode="decimal"/>
         </div>
         <div class="fg">
           <label>容器数</label>
-          <input type="number" id="i-cn" placeholder="2" min="1" inputmode="numeric">
+          <input type="number" id="i-cn" placeholder="2" min="1" inputmode="numeric"/>
         </div>
       </div>
 
       <div class="fg">
         <label>備考 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意）</span></label>
-        <input type="text" id="i-nt" placeholder="例: 容器汚れあり・次回増量" autocomplete="off">
+        <input type="text" id="i-nt" placeholder="例: 容器汚れあり・次回増量" autocomplete="off"/>
       </div>
 
       <button class="btn-p" onclick="addEnt()">この回収先を登録する</button>
@@ -244,18 +291,9 @@ window.dispatchEvent(new Event('fb-ready'));
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div class="cl" style="margin:0;">本日の入力履歴</div>
-        <button class="btn-s" onclick="go(&#39;send&#39;)" style="font-size:12px;padding:7px 12px;">送信 ▶</button>
+        <button class="btn-s" onclick="go('send')" style="font-size:12px;padding:7px 12px;">送信 &#9654;</button>
       </div>
-      <div id="td-log"><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">花花弁当</div>
-      <div style="font-size:11px;color:#888;margin-top:2px;">遠山</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-      <span style="font-size:16px;font-weight:700;">30.0L</span>
-      <button onclick="delEnt(1776755136179.169)" style="background:#f5f5f0;border:none;cursor:pointer;color:#bbb;font-size:20px;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
-    </div>
-  </div></div>
+      <div id="td-log"><div class="empty">まだ登録がありません</div></div>
     </div>
 
   </div>
@@ -264,19 +302,19 @@ window.dispatchEvent(new Event('fb-ready'));
   <div id="sec-send" class="sec">
 
     <div class="send-panel">
-      <div class="title">📧 管理者へデータを送る</div>
+      <div class="title">&#128231; 管理者へデータを送る</div>
       <p>データをコピーして、LINEやメールで管理者に貼り付けて送ってください。</p>
       <div id="send-al" class="al"></div>
       <div class="fg" style="margin-bottom:12px;">
         <label>送信対象の月</label>
-        <select id="s-mo" onchange="rnSummary()"><option value="2026-04">2026年4月</option><option value="2026-03">2026年3月</option><option value="2026-02">2026年2月</option><option value="2026-01">2026年1月</option><option value="2025-12">2025年12月</option><option value="2025-11">2025年11月</option></select>
+        <select id="s-mo" onchange="rnSummary()"></select>
       </div>
-      <button class="btn-p" onclick="copyData()" id="copy-btn" style="margin-bottom:8px;">📋 データをコピーする</button>
-      <button class="btn-p" onclick="shareData()" id="share-btn" style="background:#1a6b30;display:none;">🔗 LINEで直接送る</button>
+      <button class="btn-p" onclick="copyData()" id="copy-btn" style="margin-bottom:8px;">&#128203; データをコピーする</button>
+      <button class="btn-p" onclick="shareData()" id="share-btn" style="background:#1a6b30;display:none;">&#128279; LINEで直接送る</button>
     </div>
 
     <div class="card" id="after-copy" style="display:none;border:2px solid #1a6b30;">
-      <div style="font-size:14px;font-weight:700;color:#1a6b30;margin-bottom:10px;">✓ コピーしました！</div>
+      <div style="font-size:14px;font-weight:700;color:#1a6b30;margin-bottom:10px;">&#10003; コピーしました！</div>
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;gap:10px;align-items:flex-start;">
           <div style="width:26px;height:26px;border-radius:50%;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">1</div>
@@ -287,7 +325,7 @@ window.dispatchEvent(new Event('fb-ready'));
           <div style="font-size:13px;">メッセージ入力欄を長押し →「ペースト」をタップ</div>
         </div>
         <div style="display:flex;gap:10px;align-items:flex-start;">
-          <div style="width:26px;height:26px;border-radius:50%;background:#1a6b30;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">✓</div>
+          <div style="width:26px;height:26px;border-radius:50%;background:#1a6b30;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">&#10003;</div>
           <div style="font-size:13px;">送信して完了！</div>
         </div>
       </div>
@@ -316,7 +354,7 @@ window.dispatchEvent(new Event('fb-ready'));
       <div id="loc-al" class="al"></div>
       <div class="fg">
         <label>回収先名 <span style="color:#c0392b;">*</span></label>
-        <input type="text" id="nl-nm" placeholder="例: 〇〇レストラン 渋谷店" autocomplete="off">
+        <input type="text" id="nl-nm" placeholder="例: 〇〇レストラン 渋谷店" autocomplete="off"/>
       </div>
       <div class="fg">
         <label>カテゴリ</label>
@@ -327,15 +365,15 @@ window.dispatchEvent(new Event('fb-ready'));
       </div>
       <div class="fg">
         <label>住所 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意）</span></label>
-        <input type="text" id="nl-ad" placeholder="例: 渋谷区〇〇1-1" autocomplete="off">
+        <input type="text" id="nl-ad" placeholder="例: 渋谷区〇〇1-1" autocomplete="off"/>
       </div>
       <div class="fg">
         <label>グループ・チェーン名 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意）</span></label>
-        <input type="text" id="nl-grp" placeholder="例: 〇〇フードグループ" autocomplete="off">
+        <input type="text" id="nl-grp" placeholder="例: 〇〇フードグループ" autocomplete="off"/>
       </div>
       <div class="fg">
         <label>担当者名 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意）</span></label>
-        <input type="text" id="nl-ct2" placeholder="例: 山田様" autocomplete="off">
+        <input type="text" id="nl-ct2" placeholder="例: 山田様" autocomplete="off"/>
       </div>
       <button class="btn-p green" onclick="addLoc()">追加する</button>
     </div>
@@ -343,390 +381,31 @@ window.dispatchEvent(new Event('fb-ready'));
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div class="cl" style="margin:0;">登録済み回収先</div>
-        <span id="loc-cnt" style="font-size:12px;color:#888;font-weight:600;">1300軒</span>
+        <span id="loc-cnt" style="font-size:12px;color:#888;font-weight:600;"></span>
       </div>
       <div class="sw" style="margin-bottom:10px;">
-        <span class="si">🔍</span>
-        <input type="text" id="loc-srch" placeholder="絞り込み..." oninput="rnLocL()" style="padding-left:40px;width:100%;padding:12px 14px 12px 40px;font-size:15px;border:1.5px solid #ddd;border-radius:10px;background:#fff;">
+        <span class="si">&#128269;</span>
+        <input type="text" id="loc-srch" placeholder="絞り込み..." oninput="rnLocL()" style="padding-left:40px;width:100%;padding:12px 14px 12px 40px;font-size:15px;border:1.5px solid #ddd;border-radius:10px;background:#fff;"/>
       </div>
-      <div id="loc-l"><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">讃岐うどん　なかだや</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-001</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">彩弁当</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-002</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">北の宿</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-003</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">緑園なえば保育園</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-005</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">グリーンハイム自治会</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-007</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">満留賀（泉区中田町）</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-010</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">高級和食料理　横浜藤よし</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-011</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">マスダ精肉店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-012</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">フロンテア</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-013</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">泉はな（弁当）</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-014</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">もも保育園</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-015</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">ニコニコキッチン　横浜泉店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-016</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">特別養護老人ホーム　泉の郷</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-017</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">どんどん　城山店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-020</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">どんどん　愛川店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-021</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">どんどん　楢原店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-022</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">どんどん　恩名</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-024</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">どんどん　平塚豊田本郷店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-025</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">どんどん　寒川町倉見店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-026</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">よこ田</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-029</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">鳥正（緑園）</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-031</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">和楽路</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-032</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">ゼロキッチン(きたの家（北の家）)</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-034</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">にのいち</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-035</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">末広金属</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-036</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">居酒屋　和</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市瀬谷区-013</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">宿六</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-038</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">スーパーTAIGA（タイガ）岡津店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-039</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">にぎり屋 天</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-041</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">美味しん房</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-042</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">飲み喰い亭　泉</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-047</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">蔵</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-048</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">四季の会</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-049</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">松風学園</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-050</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">苗場保育園</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市戸塚区-046</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">下和泉小学校</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-052</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">ワンオン</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-053</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">共働舎</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-054</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">JA横浜　中川支店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市泉区-055</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">（ペットボトル）JA女性部</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">辰吉</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市瀬谷区-004</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">お食事処　のぶちゃん</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市瀬谷区-006</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">鮨辰</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市緑区-015</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">煌蘭　藤沢店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">藤沢市-105</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">養老乃瀧　中山店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市緑区-007</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">居酒屋　美奈</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市瀬谷区-014</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">ＯＮＥ‘Ｓ　三ツ境店（ワンズ）</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市瀬谷区-015</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">きらく</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市瀬谷区-016</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">ber＆diner betty</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市瀬谷区-021</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">カフェＪＢ</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市瀬谷区-022</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">岸化学</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">養老乃瀧 瀬谷店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市瀬谷区-010</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">いまむらそば店</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市旭区-002</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">いろどり（彩）</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市旭区-005</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Ｋ1ショッピングセンター（エコオイルの会）</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市旭区-007</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">グリーンコーポ　＜エコオイルの会＞</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市旭区-009</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">ラクロー（エコオイルの会）</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市旭区-010</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">マインコーポ（エコオイルの会）</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市旭区-011</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">工房アリアーレ（エコオイルの会）</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市旭区-012</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">よったも（エコオイルの会）</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市旭区-013</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">入船</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">川崎市川崎区-001</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div class="erow">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">生活介護　辻のあかり</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">横浜市旭区-015</div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f0ee;color:#555">その他</span></div>
-  </div><div style="text-align:center;padding:10px;font-size:11px;color:#aaa;">他 1240件</div></div>
+      <div id="loc-l"></div>
     </div>
   </div>
 
 </div><!-- /app -->
+</div><!-- /app-screen -->
 
 <!-- ボトムナビ -->
 <div class="nav">
-  <button class="nav-btn on" id="nav-inp" onclick="go(&#39;inp&#39;)">
-    <span class="nav-icon">✍️</span>
+  <button class="nav-btn on" id="nav-inp" onclick="go('inp')">
+    <span class="nav-icon">&#9997;&#65039;</span>
     <span>入力</span>
   </button>
-  <button class="nav-btn" id="nav-send" onclick="go(&#39;send&#39;)">
-    <span class="nav-icon">📧</span>
+  <button class="nav-btn" id="nav-send" onclick="go('send')">
+    <span class="nav-icon">&#128231;</span>
     <span>送信</span>
   </button>
-  <button class="nav-btn" id="nav-loc" onclick="go(&#39;loc&#39;)">
-    <span class="nav-icon">➕</span>
+  <button class="nav-btn" id="nav-loc" onclick="go('loc')">
+    <span class="nav-icon">&#10133;</span>
     <span>回収先追加</span>
   </button>
 </div>
@@ -772,17 +451,60 @@ async function ld(){
 function td(){return new Date().toISOString().split('T')[0];}
 function tm(){return new Date().toISOString().slice(0,7);}
 
+/* ===== ログイン制御 ===== */
+function doLogin(){
+  document.getElementById('login-err').style.display='none';
+  window.FB_SIGNIN().catch(e=>{
+    document.getElementById('login-err').textContent='ログインできませんでした。もう一度お試しください。';
+    document.getElementById('login-err').style.display='block';
+  });
+}
+function doLogout(){
+  window.FB_SIGNOUT().then(()=>{
+    document.getElementById('app-screen').style.display='none';
+    document.getElementById('login-screen').style.display='flex';
+  });
+}
+
+window.addEventListener('fb-ready', ()=>{ initApp(); });
+window.addEventListener('fb-signout', ()=>{
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+});
+
 /* ===== 初期化 ===== */
-async function init(){
+async function initApp(){
   showSync('読み込み中...',false);
-  if(window.FB_READY){await ld();}
-  else{await new Promise(r=>window.addEventListener('fb-ready',r,{once:true}));await ld();}
+  await ld();
   const d=new Date();
   document.getElementById('hd-date').textContent=
     d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+'日月火水木金土'[d.getDay()]+'）';
   document.getElementById('i-dt').value=td();
-  rfDrv();rnTd();updHdr();buildMonthSel();rnLocL();
+
+  // ドライバー名をFirestoreから取得してセット（変更不可）
+  const driverName = window.FB_DRIVER_NAME;
+  const user = window.FB_USER;
+  const sel = document.getElementById('i-dr');
+  if(driverName){
+    sel.innerHTML = `<option>${driverName}</option>`;
+    sel.disabled = true;
+    document.getElementById('hd-user').textContent = driverName + ' としてログイン中';
+  } else {
+    // usersに登録がない場合はGoogleの表示名を使う
+    const displayName = user ? (user.displayName || user.email) : '';
+    sel.innerHTML = `<option>${displayName}</option>`;
+    sel.disabled = true;
+    document.getElementById('hd-user').textContent = displayName + ' としてログイン中（要マスタ登録）';
+  }
+
+  rnTd();updHdr();buildMonthSel();rnLocL();
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
   showSync('同期済み ✓',true);
+}
+
+async function init(){
+  // 認証状態を待つ（fb-readyイベントで initApp が呼ばれる）
 }
 function showSync(msg,ok){
   let el=document.getElementById('sync-st');
@@ -808,12 +530,7 @@ function updHdr(){
 }
 
 function rfDrv(){
-  const sel=document.getElementById('i-dr');
-  if(!S.drivers.length){
-    sel.innerHTML='<option value="">（マスタにドライバー未登録）</option>';
-    return;
-  }
-  sel.innerHTML=S.drivers.map(d=>`<option>${d}</option>`).join('');
+  /* ログイン後にinitApp()でセットするため、ここでは何もしない */
 }
 
 /* ===== タブ切替 ===== */
@@ -1118,7 +835,6 @@ function rnLocL(){
 }
 
 init();
-</script><div id="sync-st" style="position: fixed; bottom: 80px; right: 12px; padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 600; z-index: 9999; transition: opacity 0.5s; background: rgb(234, 247, 238); color: rgb(26, 107, 48); border: 1px solid rgb(163, 217, 177); opacity: 0;">同期済み ✓</div>
-
-
-</body></html>
+</script>
+</body>
+</html>
