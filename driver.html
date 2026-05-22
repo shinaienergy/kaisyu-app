@@ -262,7 +262,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         <label>回収先</label>
         <div class="sw">
           <span class="si">&#128269;</span>
-          <input type="text" id="lsrc" placeholder="店名・住所で検索..." oninput="srchL()" onfocus="srchL()" autocomplete="off" autocorrect="off" spellcheck="false"/>
+          <input type="text" id="lsrc" placeholder="店名・住所で検索..." oninput="srchL()" onfocus="srchL()" onkeyup="srchL()" oncompositionend="srchL()" autocomplete="off" autocorrect="off" spellcheck="false"/>
         </div>
         <select class="dd" id="ldd" size="1" onchange="picL(event,this.value)"></select>
         <div id="sloc" style="margin-top:6px;"></div>
@@ -549,7 +549,7 @@ function srchL(){
   const dd=document.getElementById('ldd');
   if(!S.locations.length){
     dd.innerHTML='<option value="">回収先が登録されていません</option>';
-    dd.size=1;dd.classList.add('open');return;
+    dd.size=2;dd.classList.add('open');return;
   }
   const hits=q
     ? S.locations.filter(l=>
@@ -559,18 +559,14 @@ function srchL(){
       ).slice(0,30)
     : S.locations.slice(0,30);
   if(!hits.length){
-    dd.innerHTML='<option value="">「'+q+'」に一致する回収先が見つかりません</option>';
+    dd.innerHTML='<option value="">' + q + 'に一致する回収先が見つかりません</option>';
     dd.size=2;dd.classList.add('open');return;
   }
-  /* 1文字以上入力時は最初の候補を自動ハイライト */
   dd.innerHTML=(q?'':'<option value="">--- 選択してください ---</option>')+
-    hits.map(l=>`<option value="${l.name.replace(/"/g,'&quot;')}">${l.name}${l.grp?' ['+l.grp+']':''}${l.addr?' · '+l.addr:''}</option>`).join('');
-  /* 文字入力中は1番目の候補を自動選択状態にする */
-  if(q && dd.options.length > 0){
-    dd.selectedIndex=0;
-  }
-  dd.size=Math.min(hits.length+(q?0:1), 6);
+    hits.map(l=>'<option value="'+l.name.replace(/"/g,'&quot;')+'">'+l.name+(l.grp?' ['+l.grp+']':'')+(l.addr?' · '+l.addr:'')+'</option>').join('');
+  dd.size=Math.min(hits.length+(q?0:1),6);
   dd.classList.add('open');
+  if(q&&dd.options.length>0)dd.selectedIndex=0;
 }
 function picL(ev,name){
   if(!name||name==='')return;
