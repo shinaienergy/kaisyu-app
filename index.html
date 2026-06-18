@@ -272,33 +272,79 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
 
   <!-- ========== 報告書 ========== -->
   <div id="sec-rep" class="sec">
-    <div class="card">
-      <div class="cl">報告書設定</div>
-      <div class="r2">
-        <div class="fg"><label>対象年月</label><input type="month" id="r-mo"/></div>
-        <div class="fg"><label>報告先種別</label>
-          <select id="r-dest" onchange="toggleRepFields()">
-            <option value="gov">行政・自治体</option>
-            <option value="biz">取引先企業（バイオ燃料等）</option>
-            <option value="chain">飲食チェーン経理部</option>
-            <option value="int">社内経営層</option>
-          </select>
-        </div>
-      </div>
-      <div class="fg"><label>自社名</label><input type="text" id="r-co" value="廃食油回収サービス株式会社"/></div>
-      <div class="r2">
-        <div class="fg"><label>担当者名</label><input type="text" id="r-pe" placeholder="山田 太郎"/></div>
-        <div class="fg"><label>許可番号等</label><input type="text" id="r-li" placeholder="第〇〇号（任意）"/></div>
-      </div>
-      <div class="fg"><label>宛先名</label><input type="text" id="r-to" placeholder="〇〇市環境局 御中"/></div>
-      <!-- チェーン向け追加フィールド -->
-      <div id="chain-fields" style="display:none;">
-        <div class="fg"><label>チェーン・グループ名</label><input type="text" id="r-chain" placeholder="例: ○○フードグループ"/></div>
-        <div class="fg"><label>対象グループを選択</label><select id="r-grp-sel"><option value="">全店舗（グループ問わず）</option></select></div>
-      </div>
-      <button class="btn-p" onclick="genRep()">報告書を生成する</button>
+
+    <!-- サブタブ -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button class="tb on" id="rtb-grp" onclick="goRep('grp')" style="flex:1;font-size:12px;">&#128204; グループ報告書</button>
+      <button class="tb" id="rtb-gen" onclick="goRep('gen')" style="flex:1;font-size:12px;">&#128196; 一般報告書</button>
     </div>
-    <div id="r-out"></div>
+
+    <!-- グループ報告書パネル -->
+    <div id="rep-grp-panel">
+      <div class="card">
+        <div class="cl">グループ報告書を作成</div>
+        <div class="r2">
+          <div class="fg">
+            <label>対象年月</label>
+            <input type="month" id="rg-mo"/>
+          </div>
+          <div class="fg">
+            <label>報告書グループを選択</label>
+            <select id="rg-grp" onchange="previewGrpRep()" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;-webkit-appearance:none;appearance:none;">
+              <option value="">--- 選択してください ---</option>
+            </select>
+          </div>
+        </div>
+        <div id="rg-grp-info" style="display:none;background:#f5f5f0;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;"></div>
+        <div class="fg">
+          <label>自社名</label>
+          <input type="text" id="rg-co" value="廃食油回収サービス株式会社"/>
+        </div>
+        <div class="r2">
+          <div class="fg"><label>自社担当者名</label><input type="text" id="rg-pe" placeholder="山田 太郎"/></div>
+          <div class="fg"><label>許可番号（任意）</label><input type="text" id="rg-li" placeholder="第〇〇号"/></div>
+        </div>
+        <button class="btn-p" onclick="genGrpRep()">報告書を生成する</button>
+      </div>
+
+      <!-- 全グループ一括生成 -->
+      <div class="card" style="background:#f5f5f0;border:none;">
+        <div class="cl">全グループ一括確認</div>
+        <div class="sn">対象年月の全グループの回収量サマリーを一覧表示します</div>
+        <div class="r2">
+          <div class="fg"><label>対象年月</label><input type="month" id="rg-all-mo"/></div>
+        </div>
+        <button class="btn-s" onclick="genAllGrpSummary()" style="width:100%;">全グループサマリーを表示</button>
+      </div>
+
+      <div id="rg-out"></div>
+    </div>
+
+    <!-- 一般報告書パネル -->
+    <div id="rep-gen-panel" style="display:none;">
+      <div class="card">
+        <div class="cl">一般報告書設定</div>
+        <div class="r2">
+          <div class="fg"><label>対象年月</label><input type="month" id="r-mo"/></div>
+          <div class="fg"><label>報告先種別</label>
+            <select id="r-dest" onchange="toggleRepFields()">
+              <option value="gov">行政・自治体</option>
+              <option value="biz">取引先企業（バイオ燃料等）</option>
+              <option value="int">社内経営層</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg"><label>自社名</label><input type="text" id="r-co" value="廃食油回収サービス株式会社"/></div>
+        <div class="r2">
+          <div class="fg"><label>担当者名</label><input type="text" id="r-pe" placeholder="山田 太郎"/></div>
+          <div class="fg"><label>許可番号等</label><input type="text" id="r-li" placeholder="第〇〇号（任意）"/></div>
+        </div>
+        <div class="fg"><label id="r-to-label">宛先名</label><input type="text" id="r-to" placeholder="〇〇市環境局 御中"/></div>
+        <button class="btn-p" onclick="genRep()">報告書を生成する</button>
+      </div>
+      <div id="r-out"></div>
+    </div>
+
   </div>
 
   <!-- ========== マスタ設定 ========== -->
@@ -386,6 +432,20 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div id="loc-l"></div>
     </div>
 
+    <!-- 報告書グループ管理 -->
+    <div class="card">
+      <div class="cl">報告書グループ管理</div>
+      <div class="sn">チェーン本社など、月次報告書を送る先をグループとして登録します。回収先のグループ名と紐づけて使います。</div>
+      <div id="rgrp-al" class="al"></div>
+      <div class="fg"><label>グループ名 *</label><input type="text" id="rgrp-name" placeholder="例: ○○フードグループ"/></div>
+      <div class="fg"><label>宛先会社名 *</label><input type="text" id="rgrp-co" placeholder="例: 株式会社○○フード"/></div>
+      <div class="fg"><label>宛先担当者名</label><input type="text" id="rgrp-person" placeholder="例: 経理部 田中様"/></div>
+      <div class="fg"><label>住所（任意）</label><input type="text" id="rgrp-addr" placeholder="例: 東京都渋谷区..."/></div>
+      <div class="fg"><label>備考・送付方法メモ</label><input type="text" id="rgrp-note" placeholder="例: FAX 03-xxxx-xxxx / メール: xxx@xxx.com"/></div>
+      <button class="btn-s" onclick="saveRgrp()" style="width:100%;padding:11px;margin-top:4px;">グループを登録・更新する</button>
+      <div id="rgrp-list" style="margin-top:14px;"></div>
+    </div>
+
     <!-- データ管理 -->
     <div class="card">
       <div class="cl">データ管理</div>
@@ -403,6 +463,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
 <script>
 const S={
   drivers:['田中 一郎','鈴木 次郎','佐藤 三郎','高橋 四郎','伊藤 五郎','渡辺 六郎','中村 七郎'],
+  reportGroups:[], /* 報告書グループ: [{name,co,person,addr,note}] */
   locations:[
     {name:'和食レストランさくら 渋谷店',cat:'飲食店',addr:'渋谷区〇〇1-1',grp:'さくらグループ',ct:'山本様'},
     {name:'和食レストランさくら 新宿店',cat:'飲食店',addr:'新宿区〇〇2-3',grp:'さくらグループ',ct:'田中様'},
@@ -422,10 +483,10 @@ async function sv(){
   try{
     const db=window.FB_DB;
     const {doc,setDoc}=window.FB;
-    await setDoc(doc(db,'app','master'),{d:S.drivers,l:S.locations,ts:Date.now()});
+    await setDoc(doc(db,'app','master'),{d:S.drivers,l:S.locations,rg:S.reportGroups,ts:Date.now()});
     await setDoc(doc(db,'app','entries'),{e:S.entries,ts:Date.now()});
   }catch(x){
-    try{localStorage.setItem('wos_v4',JSON.stringify({d:S.drivers,l:S.locations,e:S.entries}));}catch(e){}
+    try{localStorage.setItem('wos_v4',JSON.stringify({d:S.drivers,l:S.locations,e:S.entries,rg:S.reportGroups}));}catch(e){}
   }
 }
 async function ld(){
@@ -433,10 +494,15 @@ async function ld(){
     const db=window.FB_DB;
     const {doc,getDoc}=window.FB;
     const [mSnap,eSnap]=await Promise.all([getDoc(doc(db,'app','master')),getDoc(doc(db,'app','entries'))]);
-    if(mSnap.exists()){const m=mSnap.data();if(m.d&&m.d.length)S.drivers=m.d;if(m.l&&m.l.length)S.locations=m.l;}
+    if(mSnap.exists()){
+      const m=mSnap.data();
+      if(m.d&&m.d.length)S.drivers=m.d;
+      if(m.l&&m.l.length)S.locations=m.l;
+      if(m.rg)S.reportGroups=m.rg;
+    }
     if(eSnap.exists()){const e=eSnap.data();if(e.e)S.entries=e.e;}
   }catch(x){
-    try{const p=JSON.parse(localStorage.getItem('wos_v4')||'{}');if(p.d&&p.d.length)S.drivers=p.d;if(p.l&&p.l.length)S.locations=p.l;if(p.e)S.entries=p.e;}catch(e){}
+    try{const p=JSON.parse(localStorage.getItem('wos_v4')||'{}');if(p.d&&p.d.length)S.drivers=p.d;if(p.l&&p.l.length)S.locations=p.l;if(p.e)S.entries=p.e;if(p.rg)S.reportGroups=p.rg;}catch(e){}
   }
 }
 function td(){return new Date().toISOString().split('T')[0];}
@@ -485,7 +551,9 @@ async function init(){
   document.getElementById('d-dt').value=td();
   document.getElementById('m-mo').value=tm();
   document.getElementById('r-mo').value=tm();
-  rfDrv();rnDrvL();rnLocL();rnTd();updHdr();rfGrpSel();rfAcctSel();rnAcctList();
+  document.getElementById('rg-mo').value=tm();
+  document.getElementById('rg-all-mo').value=tm();
+  rfDrv();rnDrvL();rnLocL();rnTd();updHdr();rfGrpSel();rfAcctSel();rnAcctList();rfRgrpSel();rnRgrpList();
   showSyncStatus('同期済み ✓',true);
 }
 async function ldWhenReady(){
@@ -735,9 +803,13 @@ function rfGrpSel(){
 /* ---- 報告書種別切替 ---- */
 function toggleRepFields(){
   const dest=document.getElementById('r-dest').value;
-  document.getElementById('chain-fields').style.display=dest==='chain'?'block':'none';
-  const toLabel={'gov':'宛先名（例: ○○市環境局 御中）','biz':'宛先名（例: ○○エネルギー株式会社 御中）','chain':'宛先名（例: ○○フードグループ 経理部 御中）','int':'部署名（任意）'};
-  document.querySelector('label[for="r-to"]')&&(document.querySelector('label[for="r-to"]').textContent=toLabel[dest]||'宛先名');
+  const toLabel={
+    'gov':'宛先名（例: ○○市環境局 御中）',
+    'biz':'宛先名（例: ○○エネルギー株式会社 御中）',
+    'int':'部署名（任意）'
+  };
+  const lbl=document.getElementById('r-to-label');
+  if(lbl)lbl.textContent=toLabel[dest]||'宛先名';
 }
 
 /* ---- 報告書生成 ---- */
@@ -1075,6 +1147,283 @@ function genSmpl(){
 }
 
 function clrEnts(){S.entries=[];sv();updHdr();rnTd();}
+
+/* ============================================================
+   報告書グループ管理
+   ============================================================ */
+function saveRgrp(){
+  const name=document.getElementById('rgrp-name').value.trim();
+  const co=document.getElementById('rgrp-co').value.trim();
+  const person=document.getElementById('rgrp-person').value.trim();
+  const addr=document.getElementById('rgrp-addr').value.trim();
+  const note=document.getElementById('rgrp-note').value.trim();
+  const al=document.getElementById('rgrp-al');
+  if(!name||!co){
+    al.className='al al-err';al.textContent='グループ名と宛先会社名は必須です';al.style.display='block';
+    setTimeout(()=>al.style.display='none',3000);return;
+  }
+  const existing=S.reportGroups.findIndex(g=>g.name===name);
+  if(existing>=0){
+    S.reportGroups[existing]={name,co,person,addr,note};
+    al.className='al al-ok';al.textContent='「'+name+'」を更新しました';
+  } else {
+    S.reportGroups.push({name,co,person,addr,note});
+    al.className='al al-ok';al.textContent='「'+name+'」を登録しました';
+  }
+  al.style.display='block';
+  setTimeout(()=>al.style.display='none',3000);
+  document.getElementById('rgrp-name').value='';
+  document.getElementById('rgrp-co').value='';
+  document.getElementById('rgrp-person').value='';
+  document.getElementById('rgrp-addr').value='';
+  document.getElementById('rgrp-note').value='';
+  sv();rnRgrpList();rfRgrpSel();
+}
+
+function rnRgrpList(){
+  const el=document.getElementById('rgrp-list');if(!el)return;
+  if(!S.reportGroups.length){
+    el.innerHTML='<div style="font-size:12px;color:#aaa;padding:8px 0;">まだ登録がありません</div>';return;
+  }
+  el.innerHTML=S.reportGroups.map((g,i)=>`
+    <div style="padding:10px 0;border-bottom:0.5px solid #eee;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;">${g.name}</div>
+          <div style="font-size:11px;color:#666;margin-top:2px;">${g.co}${g.person?' / '+g.person:''}</div>
+          ${g.note?`<div style="font-size:10px;color:#aaa;margin-top:2px;">📋 ${g.note}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
+          <button onclick="editRgrp(${i})" style="background:none;border:0.5px solid #ddd;color:#555;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">編集</button>
+          <button onclick="delRgrp(${i})" style="background:none;border:0.5px solid #f0c0bb;color:#c0392b;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">削除</button>
+        </div>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function editRgrp(i){
+  const g=S.reportGroups[i];
+  document.getElementById('rgrp-name').value=g.name;
+  document.getElementById('rgrp-co').value=g.co;
+  document.getElementById('rgrp-person').value=g.person||'';
+  document.getElementById('rgrp-addr').value=g.addr||'';
+  document.getElementById('rgrp-note').value=g.note||'';
+  document.getElementById('rgrp-name').focus();
+  window.scrollTo(0,document.getElementById('rgrp-name').getBoundingClientRect().top+window.scrollY-100);
+}
+
+function delRgrp(i){
+  const name=S.reportGroups[i].name;
+  S.reportGroups.splice(i,1);
+  sv();rnRgrpList();rfRgrpSel();
+  const al=document.getElementById('rgrp-al');
+  al.className='al al-ok';al.textContent='「'+name+'」を削除しました';al.style.display='block';
+  setTimeout(()=>al.style.display='none',3000);
+}
+
+function rfRgrpSel(){
+  const sel=document.getElementById('rg-grp');if(!sel)return;
+  sel.innerHTML='<option value="">--- 選択してください ---</option>'+
+    S.reportGroups.map(g=>`<option value="${g.name}">${g.name}（${g.co}）</option>`).join('');
+  const sel2=document.getElementById('rg-all-mo');
+  if(sel2&&!sel2.value)sel2.value=tm();
+}
+
+/* ============================================================
+   グループ報告書 サブタブ切替
+   ============================================================ */
+function goRep(tab){
+  document.getElementById('rtb-grp').classList.toggle('on',tab==='grp');
+  document.getElementById('rtb-gen').classList.toggle('on',tab==='gen');
+  document.getElementById('rep-grp-panel').style.display=tab==='grp'?'block':'none';
+  document.getElementById('rep-gen-panel').style.display=tab==='gen'?'block':'none';
+}
+
+/* ============================================================
+   グループ報告書 プレビュー・生成
+   ============================================================ */
+function previewGrpRep(){
+  const grpName=document.getElementById('rg-grp').value;
+  const info=document.getElementById('rg-grp-info');
+  if(!grpName){info.style.display='none';return;}
+  const g=S.reportGroups.find(r=>r.name===grpName);
+  if(!g){info.style.display='none';return;}
+  // 対象店舗数をカウント
+  const locs=S.locations.filter(l=>l.grp===grpName);
+  info.innerHTML=`<b>${g.co}</b>${g.person?' / '+g.person:''}<br>対象店舗: <b>${locs.length}軒</b>（${g.addr||'住所未登録'}）${g.note?'<br>📋 '+g.note:''}`;
+  info.style.display='block';
+}
+
+function genGrpRep(){
+  const m=document.getElementById('rg-mo').value;
+  const grpName=document.getElementById('rg-grp').value;
+  const co=document.getElementById('rg-co').value;
+  const pe=document.getElementById('rg-pe').value;
+  const li=document.getElementById('rg-li').value;
+
+  if(!m){showSyncStatus('対象年月を選択してください',false);return;}
+  if(!grpName){showSyncStatus('報告書グループを選択してください',false);return;}
+
+  const grp=S.reportGroups.find(r=>r.name===grpName);
+  if(!grp){showSyncStatus('グループが見つかりません',false);return;}
+
+  const [yr,mo]=m.split('-');
+  const es=S.entries.filter(e=>e.date.startsWith(m)&&e.grp===grpName);
+  const tot=es.reduce((s,e)=>s+e.a,0);
+  const days=[...new Set(es.map(e=>e.date))].length;
+
+  // 店舗別集計
+  const bL={};
+  es.forEach(e=>{
+    if(!bL[e.loc])bL[e.loc]={t:0,days:new Set(),cnt:0};
+    bL[e.loc].t+=e.a;bL[e.loc].days.add(e.date);bL[e.loc].cnt++;
+  });
+
+  // 登録済み全店舗（回収なしも含める）
+  const allLocs=S.locations.filter(l=>l.grp===grpName);
+  const iss=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+
+  const locRows=allLocs.map(l=>{
+    const d=bL[l.name];
+    const amt=d?d.t:0;
+    const bg=!d||amt===0?'background:#fff8f8;':'';
+    return`<tr style="${bg}">
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;">${l.name}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#888;">${l.addr||''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${d?d.days.size:0}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:${amt>0?'700':'400'};color:${amt===0?'#bbb':'#1a1a1a'};">${amt>0?amt.toFixed(1):'－'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;color:#888;">${tot>0&&amt>0?Math.round(amt/tot*100)+'%':'－'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('rg-out').innerHTML=`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px;flex-wrap:wrap;gap:8px;">
+    <span style="font-size:11px;color:#888;">プレビュー</span>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-s" onclick="window.print()">&#128438; 印刷・PDF保存</button>
+      <button class="btn-s" onclick="cpRep('rg-body')">テキストコピー</button>
+    </div>
+  </div>
+  <div id="print-target">
+  <div class="rep-wrap" id="rg-body">
+    <div style="text-align:right;font-size:11px;color:#888;margin-bottom:14px;">作成日：${iss}</div>
+    <p style="font-size:13px;font-weight:600;margin-bottom:14px;">${grp.co}${grp.person?' '+grp.person:''} 御中</p>
+    <h2>${yr}年${mo}月 廃食用油回収実績報告書</h2>
+    <p style="text-align:center;font-size:11px;color:#888;margin-top:4px;margin-bottom:16px;">グループ名：${grpName}</p>
+    <hr class="divider"/>
+    <p style="font-size:12px;margin-bottom:14px;">いつもお世話になっております。${yr}年${mo}月における貴グループ各店舗からの廃食用油回収実績を下記のとおりご報告申し上げます。</p>
+
+    <h3>1. 回収実績サマリー</h3>
+    <table style="margin-bottom:14px;font-size:12px;">
+      <tr><td style="padding:5px 8px;color:#666;width:150px;">対象期間</td><td style="padding:5px 8px;font-weight:600;">${yr}年${mo}月1日〜${yr}年${mo}月末日</td></tr>
+      <tr><td style="padding:5px 8px;color:#666;">対象グループ</td><td style="padding:5px 8px;font-weight:600;">${grpName}</td></tr>
+      <tr><td style="padding:5px 8px;color:#666;">総回収量</td><td style="padding:5px 8px;font-weight:700;font-size:16px;">${tot.toFixed(1)} リットル</td></tr>
+      <tr><td style="padding:5px 8px;color:#666;">対象店舗数</td><td style="padding:5px 8px;">${allLocs.length} 店舗</td></tr>
+      <tr><td style="padding:5px 8px;color:#666;">回収実績あり</td><td style="padding:5px 8px;">${Object.keys(bL).length} 店舗</td></tr>
+      <tr><td style="padding:5px 8px;color:#666;">稼働日数</td><td style="padding:5px 8px;">${days} 日</td></tr>
+      ${li?`<tr><td style="padding:5px 8px;color:#666;">収集運搬許可番号</td><td style="padding:5px 8px;">${li}</td></tr>`:''}
+    </table>
+
+    <h3>2. 店舗別回収明細</h3>
+    <table style="margin-bottom:14px;font-size:11px;">
+      <thead><tr>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;">店舗名</th>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;">住所</th>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:center;">回収日数</th>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:right;">回収量(L)</th>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:right;">構成比</th>
+      </tr></thead>
+      <tbody>${locRows||'<tr><td colspan="5" style="text-align:center;padding:10px;color:#bbb;">データなし</td></tr>'}</tbody>
+      <tr style="background:#f0f0eb;">
+        <td colspan="3" style="padding:6px 8px;font-weight:700;">合計</td>
+        <td style="padding:6px 8px;text-align:right;font-weight:700;">${tot.toFixed(1)}</td>
+        <td style="padding:6px 8px;text-align:right;">100%</td>
+      </tr>
+    </table>
+
+    <h3>3. 請求・精算について</h3>
+    <p style="font-size:12px;">上記明細に基づく請求書・領収証は別途お送りいたします。内容についてご不明点がございましたら担当者までお問い合わせください。</p>
+
+    <hr class="divider"/>
+    <div style="text-align:right;font-size:12px;line-height:2;margin-top:14px;">
+      <p style="font-weight:600;">${co}</p>
+      ${pe?`<p>担当者：${pe}</p>`:''}
+    </div>
+  </div>
+  </div>`;
+}
+
+/* 全グループサマリー */
+function genAllGrpSummary(){
+  const m=document.getElementById('rg-all-mo').value||tm();
+  const [yr,mo]=m.split('-');
+  if(!S.reportGroups.length){
+    document.getElementById('rg-out').innerHTML='<div class="card"><div class="empty">報告書グループが登録されていません。マスタタブから登録してください。</div></div>';
+    return;
+  }
+  const rows=S.reportGroups.map(g=>{
+    const es=S.entries.filter(e=>e.date.startsWith(m)&&e.grp===g.name);
+    const tot=es.reduce((s,e)=>s+e.a,0);
+    const locs=[...new Set(es.map(e=>e.loc))].length;
+    const allLocs=S.locations.filter(l=>l.grp===g.name).length;
+    return{g,tot,locs,allLocs,es};
+  }).sort((a,b)=>b.tot-a.tot);
+
+  const grandTotal=rows.reduce((s,r)=>s+r.tot,0);
+  document.getElementById('rg-out').innerHTML=`
+  <div class="card" style="margin-top:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="cl" style="margin:0;">${yr}年${mo}月 全グループサマリー</div>
+      <button class="btn-s" onclick="window.print()" style="font-size:12px;">&#128438; 印刷</button>
+    </div>
+    <div style="overflow-x:auto;">
+    <table style="font-size:12px;">
+      <thead><tr>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;">グループ名</th>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;">宛先</th>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:center;">店舗数</th>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:right;">総回収量(L)</th>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:center;">報告書</th>
+      </tr></thead>
+      <tbody>
+      ${rows.map((r,i)=>`
+        <tr style="${i%2===0?'background:#fafaf8':''}">
+          <td style="padding:7px 8px;font-weight:600;">${r.g.name}</td>
+          <td style="padding:7px 8px;font-size:11px;color:#666;">${r.g.co}${r.g.person?' / '+r.g.person:''}</td>
+          <td style="padding:7px 8px;text-align:center;">${r.locs}/${r.allLocs}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:${r.tot>0?'700':'400'};color:${r.tot===0?'#bbb':'#1a1a1a'};">${r.tot>0?r.tot.toFixed(1):'－'}</td>
+          <td style="padding:7px 8px;text-align:center;">
+            <button onclick="quickGenGrpRep('${r.g.name}')" style="background:#1a1a1a;color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;">生成</button>
+          </td>
+        </tr>`).join('')}
+      <tr style="background:#f0f0eb;font-weight:700;">
+        <td colspan="3" style="padding:7px 8px;">合計</td>
+        <td style="padding:7px 8px;text-align:right;">${grandTotal.toFixed(1)}</td>
+        <td></td>
+      </tr>
+      </tbody>
+    </table>
+    </div>
+    ${r=>r.g.note?`<div style="font-size:11px;color:#aaa;margin-top:8px;">📋 ${r.g.note}</div>`:''}
+  </div>`;
+}
+
+function quickGenGrpRep(grpName){
+  document.getElementById('rg-grp').value=grpName;
+  document.getElementById('rg-mo').value=document.getElementById('rg-all-mo').value||tm();
+  previewGrpRep();
+  genGrpRep();
+  document.getElementById('rg-out').scrollIntoView({behavior:'smooth'});
+}
+
+function cpRep(id){
+  const el=document.getElementById(id);
+  if(el)navigator.clipboard.writeText(el.innerText).then(()=>{
+    event.target.textContent='コピー完了！';
+    setTimeout(()=>event.target.textContent='テキストコピー',2000);
+  });
+}
 
 /* ---- ドライバーアカウント管理 ---- */
 function rfAcctSel(){
