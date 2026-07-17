@@ -562,11 +562,10 @@ function srchL(){
     dd.innerHTML='<option value="">' + q + 'に一致する回収先が見つかりません</option>';
     dd.size=2;dd.classList.add('open');return;
   }
-  dd.innerHTML=(q?'':'<option value="">--- 選択してください ---</option>')+
+  dd.innerHTML='<option value="">--- タップして選択 ---</option>'+
     hits.map(l=>'<option value="'+l.name.replace(/"/g,'&quot;')+'">'+l.name+(l.grp?' ['+l.grp+']':'')+(l.addr?' · '+l.addr:'')+'</option>').join('');
-  dd.size=Math.min(hits.length+(q?0:1),6);
+  dd.size=Math.min(hits.length+1,6);
   dd.classList.add('open');
-  if(q&&dd.options.length>0)dd.selectedIndex=0;
 }
 function picL(ev,name){
   if(!name||name==='')return;
