@@ -298,7 +298,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         <div id="rg-grp-info" style="display:none;background:#f5f5f0;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;"></div>
         <div class="fg">
           <label>自社名</label>
-          <input type="text" id="rg-co" value="廃食油回収サービス株式会社"/>
+          <input type="text" id="rg-co" value="信愛エナジー株式会社"/>
         </div>
         <div class="r2">
           <div class="fg"><label>自社担当者名</label><input type="text" id="rg-pe" placeholder="山田 太郎"/></div>
@@ -334,7 +334,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
             </select>
           </div>
         </div>
-        <div class="fg"><label>自社名</label><input type="text" id="r-co" value="廃食油回収サービス株式会社"/></div>
+        <div class="fg"><label>自社名</label><input type="text" id="r-co" value="信愛エナジー株式会社"/></div>
         <div class="r2">
           <div class="fg"><label>担当者名</label><input type="text" id="r-pe" placeholder="山田 太郎"/></div>
           <div class="fg"><label>許可番号等</label><input type="text" id="r-li" placeholder="第〇〇号（任意）"/></div>
@@ -488,6 +488,8 @@ async function sv(){
     await setDoc(doc(db,'app','entries'),{e:S.entries,ts:Date.now()});
   }catch(x){
     try{localStorage.setItem('wos_v4',JSON.stringify({d:S.drivers,l:S.locations,e:S.entries,rg:S.reportGroups}));}catch(e){}
+    showSyncStatus('⚠ クラウドに保存できませんでした（この端末にのみ保存されています）',false);
+    console.error('sv() failed:',x);
   }
 }
 async function ld(){
@@ -1252,9 +1254,12 @@ function autoCreateRgrps(){
   const created=syncRgrpsFromLocations();
   if(created>0){sv();rnRgrpList();rfRgrpSel();}
   const al=document.getElementById('rgrp-al');
-  showAl(al,created>0?'ok':'err',created>0
+  const withGrp=S.locations.filter(l=>(l.grp||'').trim()).length;
+  const uniqGrp=new Set(S.locations.map(l=>(l.grp||'').trim()).filter(Boolean)).size;
+  const detail=`（回収先 ${S.locations.length}件中、グループ設定済み ${withGrp}件 / 未設定 ${S.locations.length-withGrp}件、ユニークなグループ名 ${uniqGrp}件、うち報告書グループ登録済み ${S.reportGroups.length}件）`;
+  showAl(al,created>0?'ok':'err',(created>0
     ?`回収先リストから ${created}件 のグループを自動登録しました。宛先会社名・担当者名が必要な場合は各グループの「編集」から入力してください。`
-    :'新しく登録できるグループが見つかりませんでした（回収先にグループ名が設定されていないか、既に登録済みです）');
+    :'新しく登録できるグループが見つかりませんでした。')+detail);
 }
 
 /* ============================================================
