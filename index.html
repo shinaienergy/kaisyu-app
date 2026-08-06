@@ -437,6 +437,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div class="cl">報告書グループ管理</div>
       <div class="sn">チェーン本社など、月次報告書を送る先をグループとして登録します。回収先のグループ名と紐づけて使います。</div>
       <div id="rgrp-al" class="al"></div>
+      <button class="btn-s" onclick="autoCreateRgrps()" style="width:100%;padding:11px;margin-bottom:12px;">&#128230; 回収先リストのグループ名から自動登録</button>
       <div class="fg"><label>グループ名 *</label><input type="text" id="rgrp-name" placeholder="例: ○○フードグループ"/></div>
       <div class="fg"><label>宛先会社名 *</label><input type="text" id="rgrp-co" placeholder="例: 株式会社○○フード"/></div>
       <div class="fg"><label>宛先担当者名</label><input type="text" id="rgrp-person" placeholder="例: 経理部 田中様"/></div>
@@ -1043,10 +1044,11 @@ function impCSV(){
       added++;
     }
   });
-  sv();rnLocL();updHdr();rfGrpSel();
+  const grpCreated=syncRgrpsFromLocations();
+  sv();rnLocL();updHdr();rfGrpSel();rnRgrpList();rfRgrpSel();
   document.getElementById('imp-prev').style.display='none';
   document.getElementById('csv-in').value='';
-  showAl(al,'ok',`追加 ${added}件 · 更新 ${updated}件（スキップ: ${skipped}件）`);
+  showAl(al,'ok',`追加 ${added}件 · 更新 ${updated}件（スキップ: ${skipped}件）`+(grpCreated?` / グループ自動登録 ${grpCreated}件`:''));
   al.style.display='block';
 }
 
@@ -1228,6 +1230,31 @@ function rfRgrpSel(){
     S.reportGroups.map(g=>`<option value="${g.name}">${g.name}（${g.co}）</option>`).join('');
   const sel2=document.getElementById('rg-all-mo');
   if(sel2&&!sel2.value)sel2.value=tm();
+}
+
+/* 回収先リストのgrp項目から、未登録の報告書グループを自動生成する */
+function syncRgrpsFromLocations(){
+  const counts={};
+  S.locations.forEach(l=>{
+    const g=(l.grp||'').trim();
+    if(g)counts[g]=(counts[g]||0)+1;
+  });
+  let created=0;
+  Object.keys(counts).forEach(name=>{
+    if(!S.reportGroups.some(g=>g.name===name)){
+      S.reportGroups.push({name,co:name,person:'',addr:'',note:counts[name]+'店舗'});
+      created++;
+    }
+  });
+  return created;
+}
+function autoCreateRgrps(){
+  const created=syncRgrpsFromLocations();
+  if(created>0){sv();rnRgrpList();rfRgrpSel();}
+  const al=document.getElementById('rgrp-al');
+  showAl(al,created>0?'ok':'err',created>0
+    ?`回収先リストから ${created}件 のグループを自動登録しました。宛先会社名・担当者名が必要な場合は各グループの「編集」から入力してください。`
+    :'新しく登録できるグループが見つかりませんでした（回収先にグループ名が設定されていないか、既に登録済みです）');
 }
 
 /* ============================================================
