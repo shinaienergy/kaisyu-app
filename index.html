@@ -121,7 +121,7 @@ tr:last-child td{border-bottom:none;}
 @media print{
   body{background:#fff;}
   .app{max-width:100%;padding:0;}
-  .tab-bar,.btn-grp,.btn-p,.btn-s,.btn-d,.hdr,.card:not(#print-target){display:none;}
+  .tab-bar,.btn-grp,.btn-p,.btn-s,.btn-d,.hdr,.no-print,.card:not(#print-target){display:none!important;}
   #print-target{display:block!important;border:none;padding:0;}
   .rep-wrap{border:none;padding:0;}
 }
@@ -274,14 +274,14 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
   <div id="sec-rep" class="sec">
 
     <!-- サブタブ -->
-    <div style="display:flex;gap:6px;margin-bottom:12px;">
+    <div class="no-print" style="display:flex;gap:6px;margin-bottom:12px;">
       <button class="tb on" id="rtb-grp" onclick="goRep('grp')" style="flex:1;font-size:12px;">&#128204; グループ報告書</button>
       <button class="tb" id="rtb-gen" onclick="goRep('gen')" style="flex:1;font-size:12px;">&#128196; 一般報告書</button>
     </div>
 
     <!-- グループ報告書パネル -->
     <div id="rep-grp-panel">
-      <div class="card">
+      <div class="card no-print">
         <div class="cl">グループ報告書を作成</div>
         <div class="r2">
           <div class="fg">
@@ -308,7 +308,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       </div>
 
       <!-- 全グループ一括生成 -->
-      <div class="card" style="background:#f5f5f0;border:none;">
+      <div class="card no-print" style="background:#f5f5f0;border:none;">
         <div class="cl">全グループ一括確認</div>
         <div class="sn">対象年月の全グループの回収量サマリーを一覧表示します</div>
         <div class="r2">
@@ -322,7 +322,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
 
     <!-- 一般報告書パネル -->
     <div id="rep-gen-panel" style="display:none;">
-      <div class="card">
+      <div class="card no-print">
         <div class="cl">一般報告書設定</div>
         <div class="r2">
           <div class="fg"><label>対象年月</label><input type="month" id="r-mo"/></div>
