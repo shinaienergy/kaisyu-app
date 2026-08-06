@@ -55,7 +55,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku
 .mv-u{font-size:10px;color:#aaa;margin-top:3px;}
 
 /* アラート */
-.al{padding:11px 14px;border-radius:9px;font-size:13px;margin-bottom:12px;display:none;font-weight:500;}
+.al{padding:11px 14px;border-radius:9px;font-size:13px;margin-bottom:12px;display:none;font-weight:500;white-space:pre-line;}
 .al-ok{background:#eaf7ee;color:#1a6b30;border:1.5px solid #a3d9b1;}
 .al-err{background:#fdecea;color:#b83228;border:1.5px solid #f5a9a0;}
 .al-inf{background:#e8f0fd;color:#1a4faa;border:1.5px solid #a8c4f8;}
@@ -1017,15 +1017,49 @@ function parseImportData(raw){
   });
 }
 
+/* 店名の表記ゆれ（スペース有無・全角半角・記号違いなど）を吸収した比較用キー */
+function normName(s){
+  return (s||'')
+    .replace(/[\s　]+/g,'')
+    .replace(/[‐－―ｰー\-]/g,'-')
+    .replace(/[（(]/g,'(').replace(/[）)]/g,')')
+    .replace(/株式会社|㈱|\(株\)/g,'').replace(/有限会社|㈲|\(有\)/g,'')
+    .toLowerCase();
+}
+function escHtml(s){
+  return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+/* 完全一致ではないが名前が近い既存データを1件返す（削除・上書きはせず注意喚起のみに使う） */
+function findSimilarLoc(nm){
+  const b=normName(nm);
+  if(b.length<=3)return null;
+  return S.locations.find(l=>{
+    const a=normName(l.name);
+    return a!==b && a.length>3 && (a.includes(b)||b.includes(a));
+  })||null;
+}
+
 function previewImport(){
   const raw=document.getElementById('csv-in').value;
   const rows=parseImportData(raw);
   const prev=document.getElementById('imp-prev');
   if(!rows.length){prev.style.display='none';return;}
   const valid=rows.filter(r=>r[0]);
+  let neu=0,dup=0;const similar=[];
+  valid.forEach(r=>{
+    const nm=r[0];
+    const isDup=S.locations.some(l=>normName(l.name)===normName(nm));
+    if(isDup){dup++;return;}
+    neu++;
+    const near=findSimilarLoc(nm);
+    if(near)similar.push({nm,near:near.name});
+  });
   prev.style.display='block';
-  prev.innerHTML=`<b>${valid.length}件</b>を検出しました（先頭3件のプレビュー）：<br>`+
-    valid.slice(0,3).map(r=>`<span style="color:#1a6b30;">&#10003;</span> ${r[0]}${r[1]?' ['+r[1]+']':''}${r[3]?' ('+r[3]+')':''}`).join('<br>');
+  prev.innerHTML=`<b>${valid.length}件</b>を検出：新規登録候補 <b style="color:#1a6b30;">${neu}件</b> / 既存と一致（更新）<b>${dup}件</b>`+
+    (similar.length?`<br><span style="color:#c05800;">&#9888; 名前が似ている既存データが${similar.length}件あります（別店舗の可能性があるため自動では統合せず新規登録します。インポート後に確認してください）</span><br>`+
+      similar.slice(0,5).map(s=>`・「${escHtml(s.nm)}」 ≒ 既存「${escHtml(s.near)}」`).join('<br>')+
+      (similar.length>5?`<br>他 ${similar.length-5}件`:'')
+    :'');
 }
 
 function impCSV(){
@@ -1033,16 +1067,18 @@ function impCSV(){
   const rows=parseImportData(raw);
   const al=document.getElementById('imp-res');
   if(!rows.length){showAl(al,'err','データを入力してください');return;}
-  let added=0,skipped=0,updated=0;
+  let added=0,skipped=0,updated=0;const similar=[];
   rows.forEach(p=>{
     const nm=p[0];
     if(!nm){skipped++;return;}
-    const existing=S.locations.findIndex(l=>l.name===nm);
+    const existing=S.locations.findIndex(l=>normName(l.name)===normName(nm));
     const newLoc={name:nm,cat:p[1]||'その他',addr:p[2]||'',grp:p[3]||'',ct:p[4]||''};
     if(existing>=0){
       S.locations[existing]={...S.locations[existing],...newLoc};
       updated++;
     }else{
+      const near=findSimilarLoc(nm);
+      if(near)similar.push({nm,near:near.name});
       S.locations.push(newLoc);
       added++;
     }
@@ -1051,7 +1087,8 @@ function impCSV(){
   sv();rnLocL();updHdr();rfGrpSel();rnRgrpList();rfRgrpSel();
   document.getElementById('imp-prev').style.display='none';
   document.getElementById('csv-in').value='';
-  showAl(al,'ok',`追加 ${added}件 · 更新 ${updated}件（スキップ: ${skipped}件）`+(grpCreated?` / グループ自動登録 ${grpCreated}件`:''));
+  showAl(al,'ok',`新規登録 ${added}件 ・ 重複のため更新 ${updated}件（スキップ: ${skipped}件）`+(grpCreated?` / グループ自動登録 ${grpCreated}件`:'')
+    +(similar.length?`\n⚠ うち${similar.length}件は既存データと名前が似ています。別店舗でなければ「回収先一覧」から重複を削除してください：`+similar.slice(0,5).map(s=>`「${s.nm}」≒「${s.near}」`).join('、'):''));
   al.style.display='block';
 }
 
