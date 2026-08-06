@@ -121,7 +121,7 @@ tr:last-child td{border-bottom:none;}
 @media print{
   body{background:#fff;}
   .app{max-width:100%;padding:0;}
-  .tab-bar,.btn-grp,.btn-p,.btn-s,.btn-d,.hdr,.no-print,.card:not(#print-target){display:none!important;}
+  .tab-bar,.btn-grp,.btn-p,.btn-s,.btn-d,.hdr,.no-print,#sync-status,.card:not(#print-target){display:none!important;}
   #print-target{display:block!important;border:none;padding:0;}
   .rep-wrap{border:none;padding:0;}
 }
@@ -951,7 +951,7 @@ function genRep(){
   function nodata(cols){return`<tr><td colspan="${cols}" style="text-align:center;padding:10px;color:#bbb;">データなし</td></tr>`;}
 
   document.getElementById('r-out').innerHTML=`
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+  <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
     <span style="font-size:11px;color:#888;">プレビュー</span>
     <div style="display:flex;gap:8px;">
       <button class="btn-s" onclick="window.print()">&#128438; 印刷・PDF保存</button>
@@ -1331,7 +1331,7 @@ function genGrpRep(){
   }).join('');
 
   document.getElementById('rg-out').innerHTML=`
-  <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px;flex-wrap:wrap;gap:8px;">
+  <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px;flex-wrap:wrap;gap:8px;">
     <span style="font-size:11px;color:#888;">プレビュー</span>
     <div style="display:flex;gap:8px;">
       <button class="btn-s" onclick="window.print()">&#128438; 印刷・PDF保存</button>
