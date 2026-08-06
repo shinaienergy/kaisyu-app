@@ -691,6 +691,7 @@ function go(t){
   if(t==='day')rnDay();
   if(t==='mon')rnMon();
   if(t==='mst')rnLocL();
+  if(t==='rep'){rfRgrpSel();rnRgrpList();}
 }
 
 /* ---- 日次集計 ---- */
@@ -1506,8 +1507,6 @@ async function delAcct(email){
   }
   rnAcctList();
 }
-
-init();
 </script>
 </body>
 </html>
