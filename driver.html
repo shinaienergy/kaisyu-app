@@ -284,7 +284,21 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         <input type="text" id="i-nt" placeholder="例: 容器汚れあり・次回増量" autocomplete="off"/>
       </div>
 
-      <button class="btn-p" onclick="addEnt()">この回収先を登録する</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-p" onclick="addEnt()" style="flex:1;">この場で登録する</button>
+        <button class="btn-s" onclick="addPending()" style="flex:1;">予定に追加（数量は後で）</button>
+      </div>
+      <div style="font-size:11px;color:#999;margin-top:8px;">複数の回収先を先に回る場合は「予定に追加」→ 回収後に下の「回収予定」欄で1件ずつ数量を入力してください。</div>
+    </div>
+
+    <!-- 回収予定（数量未入力） -->
+    <div class="card" id="pending-card" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="cl" style="margin:0;">回収予定（数量未入力）</div>
+        <span id="pending-cnt" style="font-size:12px;color:#888;font-weight:600;"></span>
+      </div>
+      <button class="btn-p" onclick="finishAllPending()" style="width:100%;margin-bottom:10px;">数量を入力した分をまとめて登録する</button>
+      <div id="pending-list"></div>
     </div>
 
     <!-- 本日の入力履歴 -->
@@ -416,7 +430,8 @@ const S={
   drivers:[],
   locations:[],
   entries:[],
-  sel:[]
+  sel:[],
+  pending:[]
 };
 
 /* ---- Firebase同期 ---- */
@@ -428,14 +443,21 @@ async function sv(){
     const existing=eSnap.exists()?(eSnap.data().e||[]):[];
     const others=existing.filter(e=>e.dr!==myDriver);
     await setDoc(doc(db,'app','entries'),{e:[...others,...S.entries],ts:Date.now()});
+
+    const pSnap=await getDoc(doc(db,'app','pending'));
+    const existingP=pSnap.exists()?(pSnap.data().p||[]):[];
+    const othersP=existingP.filter(p=>p.dr!==myDriver);
+    const minePending=S.pending.filter(p=>p.dr===myDriver);
+    await setDoc(doc(db,'app','pending'),{p:[...othersP,...minePending],ts:Date.now()});
   }catch(x){console.error('sv error',x);}
 }
 async function ld(){
   try{
     const db=window.FB_DB,{doc,getDoc}=window.FB;
-    const [mSnap,eSnap]=await Promise.all([
+    const [mSnap,eSnap,pSnap]=await Promise.all([
       getDoc(doc(db,'app','master')),
-      getDoc(doc(db,'app','entries'))
+      getDoc(doc(db,'app','entries')),
+      getDoc(doc(db,'app','pending'))
     ]);
     if(mSnap.exists()){
       const m=mSnap.data();
@@ -445,6 +467,11 @@ async function ld(){
     if(eSnap.exists()){
       const e=eSnap.data();
       if(e.e)S.entries=e.e;
+    }
+    if(pSnap.exists()){
+      const p=pSnap.data();
+      const myDriver=window.FB_DRIVER_NAME||(window.FB_USER?(window.FB_USER.displayName||window.FB_USER.email):'');
+      S.pending=(p.p||[]).filter(x=>x.dr===myDriver);
     }
   }catch(x){console.error('ld error',x);}
 }
@@ -497,7 +524,7 @@ async function initApp(){
     document.getElementById('hd-user').textContent = displayName + ' としてログイン中（要マスタ登録）';
   }
 
-  rnTd();updHdr();buildMonthSel();rnLocL();
+  rnTd();updHdr();buildMonthSel();rnLocL();rnPendingList();
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app-screen').style.display='block';
   showSync('同期済み ✓',true);
@@ -569,8 +596,8 @@ function srchL(){
 }
 function picL(ev,name){
   if(!name||name==='')return;
-  /* 1件のみ保持（上書き） */
-  S.sel=[name];
+  /* 複数選択可（同じ場所は重複追加しない） */
+  if(!S.sel.includes(name))S.sel.push(name);
   /* 検索欄・ドロップダウンをリセット */
   document.getElementById('lsrc').value='';
   document.getElementById('lsrc').blur();
@@ -579,15 +606,13 @@ function picL(ev,name){
   dd.classList.remove('open');
   dd.size=1;
   rnSel();
-  /* 回収量入力欄にフォーカス */
-  setTimeout(()=>document.getElementById('i-am').focus(),100);
 }
 function rnSel(){
   const el=document.getElementById('sloc');
   if(!S.sel.length){el.innerHTML='';return;}
   el.innerHTML=S.sel.map(n=>
-    `<div style="display:flex;align-items:center;justify-content:space-between;background:#1a1a1a;color:#fff;border-radius:10px;padding:12px 16px;font-size:15px;font-weight:600;">
-      <span>${n}</span>
+    `<div style="display:flex;align-items:center;justify-content:space-between;background:#1a1a1a;color:#fff;border-radius:10px;padding:12px 16px;font-size:15px;font-weight:600;margin-bottom:6px;">
+      <span>${escHtml(n)}</span>
       <span onclick="rmSel(${JSON.stringify(n)})" style="cursor:pointer;opacity:.6;font-size:22px;margin-left:12px;">×</span>
     </div>`
   ).join('');
@@ -630,6 +655,86 @@ function addEnt(){
   sv();rnTd();updHdr();
   /* スクロールをフォームトップへ */
   document.getElementById('ia').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function escHtml(s){
+  return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ===== 回収予定（複数選択→後からまとめて数量入力） ===== */
+function addPending(){
+  const dt=document.getElementById('i-dt').value;
+  const dr=document.getElementById('i-dr').value;
+  const locs=S.sel.slice();
+  const al=document.getElementById('ia');
+  if(!dt){showAl(al,'err','回収日を選択してください');return;}
+  if(!dr||dr===''){showAl(al,'err','ドライバーを選択してください（マスタで登録が必要です）');return;}
+  if(!locs.length){showAl(al,'err','回収先を検索して選択してください');return;}
+  locs.forEach(loc=>{
+    const locData=S.locations.find(l=>l.name===loc)||{};
+    S.pending.push({id:'p'+Date.now()+Math.random().toString(36).slice(2),date:dt,dr,loc,grp:locData.grp||''});
+  });
+  S.sel=[];
+  document.getElementById('lsrc').value='';
+  rnSel();
+  showAl(al,'ok',locs.length+'件を回収予定に追加しました。回収後、下の「回収予定」欄で数量を入力してください。');
+  sv();rnPendingList();
+}
+
+function rnPendingList(){
+  const card=document.getElementById('pending-card');
+  const cnt=document.getElementById('pending-cnt');
+  const el=document.getElementById('pending-list');
+  if(!card||!el)return;
+  const myDriver=document.getElementById('i-dr').value;
+  const mine=S.pending.filter(p=>p.dr===myDriver);
+  if(!mine.length){card.style.display='none';return;}
+  card.style.display='block';
+  cnt.textContent=mine.length+'件';
+  el.innerHTML=mine.map(p=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eee;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(p.loc)}</div>
+        <div style="font-size:11px;color:#888;">${p.date}</div>
+      </div>
+      <input type="number" id="pend-am-${p.id}" placeholder="量(L)" step="0.1" min="0" inputmode="decimal" style="width:78px;padding:9px;font-size:14px;border:1.5px solid #ddd;border-radius:8px;"/>
+      <button onclick="finishPending('${p.id}')" class="btn-s" style="padding:9px 10px;font-size:12px;white-space:nowrap;">登録</button>
+      <button onclick="cancelPending('${p.id}')" style="background:none;border:none;color:#c0392b;font-size:20px;line-height:1;cursor:pointer;padding:4px;">&times;</button>
+    </div>`).join('');
+}
+
+function finishPending(id){
+  const idx=S.pending.findIndex(p=>p.id===id);
+  if(idx<0)return;
+  const p=S.pending[idx];
+  const amEl=document.getElementById('pend-am-'+id);
+  const am=parseFloat(amEl.value);
+  if(isNaN(am)||am<=0){amEl.style.borderColor='#c0392b';amEl.focus();return;}
+  S.entries.push({id:Date.now()+Math.random(),date:p.date,dr:p.dr,loc:p.loc,grp:p.grp,a:am,cn:null,nt:''});
+  S.pending.splice(idx,1);
+  sv();rnPendingList();rnTd();updHdr();
+}
+
+function finishAllPending(){
+  const al=document.getElementById('ia');
+  const myDriver=document.getElementById('i-dr').value;
+  let done=0;
+  S.pending.filter(p=>p.dr===myDriver).slice().forEach(p=>{
+    const amEl=document.getElementById('pend-am-'+p.id);
+    if(!amEl)return;
+    const am=parseFloat(amEl.value);
+    if(isNaN(am)||am<=0)return;
+    S.entries.push({id:Date.now()+Math.random(),date:p.date,dr:p.dr,loc:p.loc,grp:p.grp,a:am,cn:null,nt:''});
+    S.pending=S.pending.filter(x=>x.id!==p.id);
+    done++;
+  });
+  if(done>0){sv();rnPendingList();rnTd();updHdr();showAl(al,'ok',done+'件を登録しました');}
+  else showAl(al,'err','数量が入力された項目がありません');
+}
+
+function cancelPending(id){
+  S.pending=S.pending.filter(p=>p.id!==id);
+  sv();rnPendingList();
 }
 
 function showAl(el,type,msg){
