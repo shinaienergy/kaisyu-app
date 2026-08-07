@@ -611,26 +611,29 @@ function rfDrv(){
 }
 
 /* ---- 回収先検索・選択 ---- */
+let searchHits=[];
 function srchL(){
   const q=document.getElementById('lsrc').value.trim().toLowerCase();
   const dd=document.getElementById('ldd');
   const hits=q
     ? S.locations.filter(l=>l.name.toLowerCase().includes(q)||(l.addr||'').toLowerCase().includes(q)||(l.grp||'').toLowerCase().includes(q)).slice(0,20)
     : S.locations.slice(0,10);
+  searchHits=hits;
   if(!hits.length){
     dd.innerHTML='<div class="ddi" style="color:#bbb;">該当なし</div>';
     dd.classList.add('open');return;
   }
-  dd.innerHTML=hits.map(l=>`<div class="ddi" onmousedown="picL(event,${JSON.stringify(l.name)})">
-    <div class="ddi-name">${l.name}${l.grp?` <span style="font-size:10px;color:#999;font-weight:400;">[${l.grp}]</span>`:''}</div>
-    <div class="ddi-sub">${l.cat}${l.addr?' · '+l.addr:''}</div>
+  dd.innerHTML=hits.map((l,i)=>`<div class="ddi" data-idx="${i}">
+    <div class="ddi-name">${escHtml(l.name)}${l.grp?` <span style="font-size:10px;color:#999;font-weight:400;">[${escHtml(l.grp)}]</span>`:''}</div>
+    <div class="ddi-sub">${escHtml(l.cat)}${l.addr?' · '+escHtml(l.addr):''}</div>
   </div>`).join('');
   dd.classList.add('open');
 }
 
-function picL(ev,name){
-  ev.preventDefault();
-  ev.stopPropagation();
+function pickFromDD(idx){
+  const l=searchHits[idx];
+  if(!l)return;
+  const name=l.name;
   if(!S.sel.includes(name))S.sel.push(name);
   document.getElementById('lsrc').value='';
   document.getElementById('ldd').classList.remove('open');
@@ -638,10 +641,24 @@ function picL(ev,name){
 }
 function rnSel(){
   document.getElementById('sloc').innerHTML=S.sel.map(n=>
-    `<span class="tag">${n}<span class="tx" onclick="rmSel(${JSON.stringify(n)})">×</span></span>`
+    `<span class="tag">${escHtml(n)}<span class="tx" onclick="rmSel(${JSON.stringify(n)})">×</span></span>`
   ).join('');
 }
 function rmSel(n){S.sel=S.sel.filter(x=>x!==n);rnSel();}
+
+/* PCのclick・スマホのtouchend両方に対応（inputのblurでキーボードが閉じてタップがズレる問題を回避するためmousedownでpreventDefault） */
+(function(){
+  const dd=document.getElementById('ldd');
+  const onPick=e=>{
+    const item=e.target.closest('.ddi[data-idx]');
+    if(!item)return;
+    e.preventDefault();
+    e.stopPropagation();
+    pickFromDD(parseInt(item.dataset.idx,10));
+  };
+  dd.addEventListener('mousedown',onPick);
+  dd.addEventListener('touchend',onPick,{passive:false});
+})();
 
 document.addEventListener('click',e=>{
   if(!e.target.closest('#lsrc')&&!e.target.closest('#ldd'))
