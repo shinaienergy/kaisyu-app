@@ -258,6 +258,8 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         </div>
       </div>
 
+      <button class="btn-s" onclick="loadDefaultRoute()" style="width:100%;margin-bottom:12px;">&#128663; 本日の標準ルートを追加</button>
+
       <div class="fg">
         <label>回収先</label>
         <div class="sw">
@@ -431,7 +433,8 @@ const S={
   locations:[],
   entries:[],
   sel:[],
-  pending:[]
+  pending:[],
+  routes:[]
 };
 
 /* ---- Firebase同期 ---- */
@@ -463,6 +466,7 @@ async function ld(){
       const m=mSnap.data();
       if(m.d&&m.d.length)S.drivers=m.d;
       if(m.l&&m.l.length)S.locations=m.l;
+      if(m.rt)S.routes=m.rt;
     }
     if(eSnap.exists()){
       const e=eSnap.data();
@@ -679,6 +683,32 @@ function addPending(){
   rnSel();
   showAl(al,'ok',locs.length+'件を回収予定に追加しました。回収後、下の「回収予定」欄で数量を入力してください。');
   sv();rnPendingList();
+}
+
+/* ===== 本日の標準ルートを回収予定に追加（ルートの登録・編集はマスタ側のindex.htmlで行う） ===== */
+function loadDefaultRoute(){
+  const dt=document.getElementById('i-dt').value;
+  const dr=document.getElementById('i-dr').value;
+  const al=document.getElementById('ia');
+  if(!dt){showAl(al,'err','回収日を選択してください');return;}
+  if(!dr||dr===''){showAl(al,'err','ドライバーを選択してください（マスタで登録が必要です）');return;}
+  const wdKey=['sun','mon','tue','wed','thu','fri','sat'][new Date(dt+'T00:00:00').getDay()];
+  if(wdKey==='sat'||wdKey==='sun'){showAl(al,'err','土日の標準ルートは設定できません');return;}
+  const route=S.routes.find(r=>r.driver===dr&&r.wd===wdKey);
+  if(!route||!route.locs.length){showAl(al,'err','この曜日の標準ルートが登録されていません（管理者にマスタ設定での登録を依頼してください）');return;}
+  const already=new Set([
+    ...S.pending.filter(p=>p.date===dt&&p.dr===dr).map(p=>p.loc),
+    ...S.entries.filter(e=>e.date===dt&&e.dr===dr).map(e=>e.loc)
+  ]);
+  let added=0;
+  route.locs.forEach(loc=>{
+    if(already.has(loc))return;
+    const locData=S.locations.find(l=>l.name===loc)||{};
+    S.pending.push({id:'p'+Date.now()+Math.random().toString(36).slice(2),date:dt,dr,loc,grp:locData.grp||''});
+    added++;
+  });
+  if(added>0){sv();rnPendingList();showAl(al,'ok',`標準ルート${route.locs.length}件のうち${added}件を回収予定に追加しました`);}
+  else showAl(al,'ok','標準ルートは全て既に回収予定または登録済みです');
 }
 
 function rnPendingList(){

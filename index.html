@@ -217,6 +217,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         <div class="fg"><label>回収日</label><input type="date" id="i-dt"/></div>
         <div class="fg"><label>ドライバー</label><select id="i-dr"></select></div>
       </div>
+      <button class="btn-s" onclick="loadDefaultRoute()" style="width:100%;margin-bottom:12px;">&#128663; 本日の標準ルートを追加</button>
       <div class="fg">
         <label>回収先を検索（複数選択可）</label>
         <div class="sw">
@@ -373,6 +374,38 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div id="drv-l"></div>
     </div>
 
+    <!-- 曜日別デフォルトルート -->
+    <div class="card">
+      <div class="cl">ドライバー別 曜日デフォルトルート</div>
+      <div class="sn">各ドライバーの月〜金の標準回収先を登録しておくと、入力タブの「本日の標準ルートを追加」ボタン1つで回収予定にまとめて登録できます。</div>
+      <div id="route-al" class="al"></div>
+      <div class="r2">
+        <div class="fg"><label>ドライバー</label>
+          <select id="rt-dr" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;-webkit-appearance:none;appearance:none;"></select>
+        </div>
+        <div class="fg"><label>曜日</label>
+          <select id="rt-wd" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;-webkit-appearance:none;appearance:none;">
+            <option value="mon">月曜日</option>
+            <option value="tue">火曜日</option>
+            <option value="wed">水曜日</option>
+            <option value="thu">木曜日</option>
+            <option value="fri">金曜日</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <label>回収先を検索（複数選択可）</label>
+        <div class="sw">
+          <span class="si">&#128269;</span>
+          <input type="text" id="rt-src" placeholder="店名・住所・グループ名で検索..." oninput="srchRtLoc()" onfocus="srchRtLoc()" autocomplete="off"/>
+        </div>
+        <div class="dd" id="rt-dd"></div>
+        <div class="sel-tags" id="rt-sel-tags"></div>
+      </div>
+      <button class="btn-s" onclick="saveRoute()" style="width:100%;padding:11px;">この曜日のルートを保存する</button>
+      <div id="route-list" style="margin-top:14px;"></div>
+    </div>
+
     <!-- Googleアカウント紐づけ -->
     <div class="card">
       <div class="cl">Googleアカウント紐づけ</div>
@@ -490,7 +523,8 @@ const S={
   ],
   entries:[],
   sel:[],
-  pending:[] /* 回収予定（数量未入力）: [{id,date,dr,loc,grp}] */
+  pending:[], /* 回収予定（数量未入力）: [{id,date,dr,loc,grp}] */
+  routes:[] /* 曜日デフォルトルート: [{driver,wd,locs:[name,...]}] wd:mon/tue/wed/thu/fri */
 };
 
 /* ---- Firebase同期 ---- */
@@ -498,11 +532,11 @@ async function sv(){
   try{
     const db=window.FB_DB;
     const {doc,setDoc}=window.FB;
-    await setDoc(doc(db,'app','master'),{d:S.drivers,l:S.locations,rg:S.reportGroups,ts:Date.now()});
+    await setDoc(doc(db,'app','master'),{d:S.drivers,l:S.locations,rg:S.reportGroups,rt:S.routes,ts:Date.now()});
     await setDoc(doc(db,'app','entries'),{e:S.entries,ts:Date.now()});
     await setDoc(doc(db,'app','pending'),{p:S.pending,ts:Date.now()});
   }catch(x){
-    try{localStorage.setItem('wos_v4',JSON.stringify({d:S.drivers,l:S.locations,e:S.entries,rg:S.reportGroups,p:S.pending}));}catch(e){}
+    try{localStorage.setItem('wos_v4',JSON.stringify({d:S.drivers,l:S.locations,e:S.entries,rg:S.reportGroups,p:S.pending,rt:S.routes}));}catch(e){}
     showSyncStatus('⚠ クラウドに保存できませんでした（この端末にのみ保存されています）',false);
     console.error('sv() failed:',x);
   }
@@ -517,11 +551,12 @@ async function ld(){
       if(m.d&&m.d.length)S.drivers=m.d;
       if(m.l&&m.l.length)S.locations=m.l;
       if(m.rg)S.reportGroups=m.rg;
+      if(m.rt)S.routes=m.rt;
     }
     if(eSnap.exists()){const e=eSnap.data();if(e.e)S.entries=e.e;}
     if(pSnap.exists()){const p=pSnap.data();if(p.p)S.pending=p.p;}
   }catch(x){
-    try{const p=JSON.parse(localStorage.getItem('wos_v4')||'{}');if(p.d&&p.d.length)S.drivers=p.d;if(p.l&&p.l.length)S.locations=p.l;if(p.e)S.entries=p.e;if(p.rg)S.reportGroups=p.rg;if(p.p)S.pending=p.p;}catch(e){}
+    try{const p=JSON.parse(localStorage.getItem('wos_v4')||'{}');if(p.d&&p.d.length)S.drivers=p.d;if(p.l&&p.l.length)S.locations=p.l;if(p.e)S.entries=p.e;if(p.rg)S.reportGroups=p.rg;if(p.p)S.pending=p.p;if(p.rt)S.routes=p.rt;}catch(e){}
   }
 }
 function td(){return new Date().toISOString().split('T')[0];}
@@ -572,7 +607,7 @@ async function init(){
   document.getElementById('r-mo').value=tm();
   document.getElementById('rg-mo').value=tm();
   document.getElementById('rg-all-mo').value=tm();
-  rfDrv();rnDrvL();rnLocL();rnTd();updHdr();rfGrpSel();rfAcctSel();rnAcctList();rfRgrpSel();rnRgrpList();rnPendingList();
+  rfDrv();rnDrvL();rnLocL();rnTd();updHdr();rfGrpSel();rfAcctSel();rnAcctList();rfRgrpSel();rnRgrpList();rnPendingList();rfRouteDrvSel();rnRouteList();
   showSyncStatus('同期済み ✓',true);
 }
 async function ldWhenReady(){
@@ -664,6 +699,140 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('#lsrc')&&!e.target.closest('#ldd'))
     document.getElementById('ldd').classList.remove('open');
 });
+
+/* ---- 曜日デフォルトルート：回収先検索・選択（マスタ設定タブ） ---- */
+let rtSel=[];
+let routeSearchHits=[];
+function srchRtLoc(){
+  const q=document.getElementById('rt-src').value.trim().toLowerCase();
+  const dd=document.getElementById('rt-dd');
+  const hits=q
+    ? S.locations.filter(l=>l.name.toLowerCase().includes(q)||(l.addr||'').toLowerCase().includes(q)||(l.grp||'').toLowerCase().includes(q)).slice(0,20)
+    : S.locations.slice(0,10);
+  routeSearchHits=hits;
+  if(!hits.length){
+    dd.innerHTML='<div class="ddi" style="color:#bbb;">該当なし</div>';
+    dd.classList.add('open');return;
+  }
+  dd.innerHTML=hits.map((l,i)=>`<div class="ddi" data-idx="${i}">
+    <div class="ddi-name">${escHtml(l.name)}${l.grp?` <span style="font-size:10px;color:#999;font-weight:400;">[${escHtml(l.grp)}]</span>`:''}</div>
+    <div class="ddi-sub">${escHtml(l.cat)}${l.addr?' · '+escHtml(l.addr):''}</div>
+  </div>`).join('');
+  dd.classList.add('open');
+}
+function pickFromRtDD(idx){
+  const l=routeSearchHits[idx];
+  if(!l)return;
+  if(!rtSel.includes(l.name))rtSel.push(l.name);
+  document.getElementById('rt-src').value='';
+  document.getElementById('rt-dd').classList.remove('open');
+  rnRtSel();
+}
+function rnRtSel(){
+  document.getElementById('rt-sel-tags').innerHTML=rtSel.map(n=>
+    `<span class="tag">${escHtml(n)}<span class="tx" onclick="rmRtSel(${JSON.stringify(n)})">×</span></span>`
+  ).join('');
+}
+function rmRtSel(n){rtSel=rtSel.filter(x=>x!==n);rnRtSel();}
+
+(function(){
+  const dd=document.getElementById('rt-dd');
+  if(!dd)return;
+  const onPick=e=>{
+    const item=e.target.closest('.ddi[data-idx]');
+    if(!item)return;
+    e.preventDefault();
+    e.stopPropagation();
+    pickFromRtDD(parseInt(item.dataset.idx,10));
+  };
+  dd.addEventListener('mousedown',onPick);
+  dd.addEventListener('touchend',onPick,{passive:false});
+})();
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#rt-src')&&!e.target.closest('#rt-dd'))
+    document.getElementById('rt-dd')&&document.getElementById('rt-dd').classList.remove('open');
+});
+
+const WD_LABEL={mon:'月曜日',tue:'火曜日',wed:'水曜日',thu:'木曜日',fri:'金曜日'};
+function rfRouteDrvSel(){
+  const sel=document.getElementById('rt-dr');if(!sel)return;
+  sel.innerHTML=S.drivers.map(d=>`<option>${escHtml(d)}</option>`).join('');
+}
+function saveRoute(){
+  const driver=document.getElementById('rt-dr').value;
+  const wd=document.getElementById('rt-wd').value;
+  const al=document.getElementById('route-al');
+  if(!driver){showAl(al,'err','ドライバーを選択してください（マスタで登録が必要です）');return;}
+  if(!rtSel.length){showAl(al,'err','回収先を1件以上選択してください');return;}
+  const existing=S.routes.findIndex(r=>r.driver===driver&&r.wd===wd);
+  if(existing>=0)S.routes[existing]={driver,wd,locs:rtSel.slice()};
+  else S.routes.push({driver,wd,locs:rtSel.slice()});
+  rtSel=[];rnRtSel();
+  sv();rnRouteList();
+  showAl(al,'ok',`${driver} の${WD_LABEL[wd]}ルートを保存しました`);
+}
+function rnRouteList(){
+  const el=document.getElementById('route-list');if(!el)return;
+  if(!S.routes.length){el.innerHTML='<div style="font-size:12px;color:#aaa;padding:8px 0;">まだ登録がありません</div>';return;}
+  const order=['mon','tue','wed','thu','fri'];
+  const sorted=S.routes.slice().sort((a,b)=>a.driver.localeCompare(b.driver,'ja')||order.indexOf(a.wd)-order.indexOf(b.wd));
+  el.innerHTML=sorted.map(r=>{
+    const idx=S.routes.indexOf(r);
+    return`<div style="padding:10px 0;border-bottom:0.5px solid #eee;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;">${escHtml(r.driver)} ・ ${WD_LABEL[r.wd]}</div>
+          <div style="font-size:11px;color:#666;margin-top:2px;">${r.locs.map(escHtml).join('、')}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
+          <button onclick="editRoute(${idx})" style="background:none;border:0.5px solid #ddd;color:#555;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">編集</button>
+          <button onclick="delRoute(${idx})" style="background:none;border:0.5px solid #f0c0bb;color:#c0392b;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">削除</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function editRoute(i){
+  const r=S.routes[i];if(!r)return;
+  document.getElementById('rt-dr').value=r.driver;
+  document.getElementById('rt-wd').value=r.wd;
+  rtSel=r.locs.slice();
+  rnRtSel();
+  document.getElementById('rt-dr').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function delRoute(i){
+  const r=S.routes[i];if(!r)return;
+  S.routes.splice(i,1);
+  sv();rnRouteList();
+  const al=document.getElementById('route-al');
+  showAl(al,'ok',`${r.driver} の${WD_LABEL[r.wd]}ルートを削除しました`);
+}
+
+/* ---- 入力タブ：本日の標準ルートを回収予定に追加 ---- */
+function loadDefaultRoute(){
+  const dt=document.getElementById('i-dt').value;
+  const dr=document.getElementById('i-dr').value;
+  const al=document.getElementById('ia');
+  if(!dt||!dr){showAl(al,'err','回収日・ドライバーを選択してください');return;}
+  const wdKey=['sun','mon','tue','wed','thu','fri','sat'][new Date(dt+'T00:00:00').getDay()];
+  if(wdKey==='sat'||wdKey==='sun'){showAl(al,'err','土日の標準ルートは設定できません');return;}
+  const route=S.routes.find(r=>r.driver===dr&&r.wd===wdKey);
+  if(!route||!route.locs.length){showAl(al,'err','この曜日の標準ルートが登録されていません（マスタ設定タブで登録できます）');return;}
+  const already=new Set([
+    ...S.pending.filter(p=>p.date===dt&&p.dr===dr).map(p=>p.loc),
+    ...S.entries.filter(e=>e.date===dt&&e.dr===dr).map(e=>e.loc)
+  ]);
+  let added=0;
+  route.locs.forEach(loc=>{
+    if(already.has(loc))return;
+    const locData=S.locations.find(l=>l.name===loc)||{};
+    S.pending.push({id:Date.now()+Math.random(),date:dt,dr,loc,grp:locData.grp||''});
+    added++;
+  });
+  if(added>0){sv();rnPendingList();showAl(al,'ok',`標準ルート${route.locs.length}件のうち${added}件を回収予定に追加しました`);}
+  else showAl(al,'ok','標準ルートは全て既に回収予定または登録済みです');
+}
 
 /* ---- 登録 ---- */
 function addEnt(){
