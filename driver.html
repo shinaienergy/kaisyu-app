@@ -224,6 +224,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="hdr-badge" id="hd-stat">0件</div>
+      <button onclick="hardReload()" style="background:#333;border:none;color:#aaa;font-size:16px;width:26px;height:26px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="最新の状態に更新">&#8635;</button>
       <button onclick="doLogout()" style="background:#333;border:none;color:#aaa;font-size:11px;padding:4px 10px;border-radius:999px;cursor:pointer;">ログアウト</button>
     </div>
   </div>
@@ -501,6 +502,9 @@ function doLogin(){
     document.getElementById('login-err').textContent='ログインできませんでした。もう一度お試しください。';
     document.getElementById('login-err').style.display='block';
   });
+}
+function hardReload(){
+  location.href=location.pathname+'?_r='+Date.now();
 }
 function doLogout(){
   window.FB_SIGNOUT().then(()=>{
