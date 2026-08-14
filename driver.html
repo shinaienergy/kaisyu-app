@@ -792,7 +792,8 @@ function showAl(el,type,msg){
 /* ===== 本日履歴 ===== */
 function rnTd(){
   const d=document.getElementById('i-dt').value||td();
-  const es=S.entries.filter(e=>e.date===d);
+  const myDriver=document.getElementById('i-dr').value;
+  const es=S.entries.filter(e=>e.date===d&&e.dr===myDriver);
   const el=document.getElementById('td-log');
   if(!es.length){el.innerHTML='<div class="empty">まだ登録がありません</div>';return;}
   el.innerHTML=es.map(e=>`<div class="erow">
@@ -808,6 +809,9 @@ function rnTd(){
   updHdr();
 }
 function delEnt(id){
+  const myDriver=document.getElementById('i-dr').value;
+  const target=S.entries.find(e=>Math.abs(e.id-id)<0.001);
+  if(!target||target.dr!==myDriver)return;
   S.entries=S.entries.filter(e=>Math.abs(e.id-id)>0.001);
   sv();rnTd();updHdr();
 }
