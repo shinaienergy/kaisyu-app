@@ -409,7 +409,8 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         <div class="cl" style="font-size:13px;">Excelから一括インポート</div>
         <div class="sn">
           1行1店舗で、<b>ドライバー名 / 曜日（月・火・水・木・金）/ 回収先名</b> の3列をExcelからそのまま貼り付けてください。<br>
-          同じドライバー・曜日の行をまとめて1つのルートとして登録します（既存のその曜日のルートは上書きされます）。回収先名は登録済みの回収先と一致している必要があります。
+          同じドライバー・曜日の行をまとめて1つのルートとして登録します（既存のその曜日のルートがあれば追加、重複する店舗は自動で除外）。回収先名は登録済みの回収先と一致している必要があります。<br>
+          既存のルートを丸ごと入れ替えたい場合は、上の登録済みリストから「編集」→ 選び直して保存するか、一度「削除」してからインポートしてください。
         </div>
         <div class="import-zone">
           <p>↓ ここにExcelのセルをそのまま貼り付け (Ctrl+V / ⌘V)</p>
@@ -883,17 +884,25 @@ function impRoutes(){
     showAl(al,'err','登録できる行がありませんでした。ドライバー名・曜日・回収先名（登録済みの回収先と一致）を確認してください。');
     return;
   }
+  let added=0,created=0;
   keys.forEach(key=>{
     const [driver,wd]=key.split('|');
-    const locs=[...groups[key]];
+    const newLocs=[...groups[key]];
     const existing=S.routes.findIndex(r=>r.driver===driver&&r.wd===wd);
-    if(existing>=0)S.routes[existing]={driver,wd,locs};
-    else S.routes.push({driver,wd,locs});
+    if(existing>=0){
+      const before=S.routes[existing].locs.length;
+      const merged=[...new Set([...S.routes[existing].locs,...newLocs])];
+      S.routes[existing]={driver,wd,locs:merged};
+      added+=merged.length-before;
+    }else{
+      S.routes.push({driver,wd,locs:newLocs});
+      created++;
+    }
   });
   sv();rnRouteList();
   document.getElementById('rt-imp-prev').style.display='none';
   document.getElementById('rt-csv-in').value='';
-  showAl(al,'ok',`${keys.length}件のルート（ドライバー×曜日）を登録しました`+
+  showAl(al,'ok',`${keys.length}件のルート（ドライバー×曜日）を処理しました（新規 ${created}件 ・ 既存ルートへの追加 ${added}件）`+
     (ngWd?` ／ 曜日が不明で${ngWd}行スキップ`:'')+
     (notFound.length?` ／ 該当する回収先が見つからず${notFound.length}行スキップ（例: ${notFound.slice(0,3).map(escHtml).join('、')}）`:''));
 }
