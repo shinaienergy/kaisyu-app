@@ -304,12 +304,13 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div id="pending-list"></div>
     </div>
 
-    <!-- 本日の入力履歴 -->
+    <!-- 入力履歴 -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div class="cl" style="margin:0;">本日の入力履歴</div>
+        <div class="cl" style="margin:0;" id="td-log-title">本日の入力履歴</div>
         <button class="btn-s" onclick="go('send')" style="font-size:12px;padding:7px 12px;">送信 &#9654;</button>
       </div>
+      <button class="btn-s" onclick="rnTd()" style="width:100%;margin-bottom:10px;">&#128269; 上で指定した回収日の履歴を確認する</button>
       <div id="td-log"><div class="empty">まだ登録がありません</div></div>
     </div>
 
@@ -793,12 +794,20 @@ function showAl(el,type,msg){
   setTimeout(()=>el.style.display='none',4000);
 }
 
-/* ===== 本日履歴 ===== */
+/* ===== 入力履歴 ===== */
 function rnTd(){
   const d=document.getElementById('i-dt').value||td();
   const myDriver=document.getElementById('i-dr').value;
   const es=S.entries.filter(e=>e.date===d&&e.dr===myDriver);
   const el=document.getElementById('td-log');
+  const titleEl=document.getElementById('td-log-title');
+  if(titleEl){
+    const isToday=d===td();
+    const dObj=new Date(d+'T00:00:00');
+    const label=(dObj.getMonth()+1)+'月'+dObj.getDate()+'日'+(isToday?'（本日）':'');
+    const badge=es.length?' <span style="font-size:10px;font-weight:600;color:#1a6b30;background:#eaf7ee;padding:2px 8px;border-radius:999px;">確定済み</span>':'';
+    titleEl.innerHTML=label+'の入力履歴'+badge;
+  }
   if(!es.length){el.innerHTML='<div class="empty">まだ登録がありません</div>';return;}
   el.innerHTML=es.map(e=>`<div class="erow">
     <div style="flex:1;min-width:0;">
