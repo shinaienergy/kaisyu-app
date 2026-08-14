@@ -442,6 +442,14 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div id="acct-list" style="margin-top:12px;"></div>
     </div>
 
+    <!-- データメンテナンス -->
+    <div class="card">
+      <div class="cl">データメンテナンス</div>
+      <div class="sn">ドライバーアプリの不具合により、回収記録が重複して保存されていた期間があります（2026年8月に修正済み）。このボタンで、同じ記録の重複を安全に取り除けます（別々の記録を誤って1つにまとめることはありません）。</div>
+      <div id="dedupe-al" class="al"></div>
+      <button class="btn-s" onclick="dedupeEntries()" style="width:100%;padding:11px;">重複した回収記録を整理する</button>
+    </div>
+
     <!-- 月次回収量シート自動連携 -->
     <div class="card">
       <div class="cl">月次回収量シート自動連携</div>
@@ -1624,6 +1632,30 @@ function genSmpl(){
 }
 
 function clrEnts(){S.entries=[];sv();updHdr();rnTd();}
+
+/* ---- 重複した回収記録の整理（driver.htmlの保存不具合対策） ---- */
+async function dedupeEntries(){
+  const al=document.getElementById('dedupe-al');
+  const before=S.entries.length;
+  const seen=new Set();
+  const deduped=S.entries.filter(e=>{
+    if(seen.has(e.id))return false;
+    seen.add(e.id);
+    return true;
+  });
+  const removed=before-deduped.length;
+  if(removed===0){
+    al.className='al al-ok';al.textContent='重複データは見つかりませんでした（'+before+'件）';al.style.display='block';
+    setTimeout(()=>al.style.display='none',4000);
+    return;
+  }
+  if(!confirm(`重複した回収記録が${removed}件見つかりました。\n\n整理すると ${before}件 → ${deduped.length}件 になります。\n（本物の記録が失われることはなく、同じ記録の重複コピーのみを取り除きます）\n\n実行しますか？`))return;
+  S.entries=deduped;
+  await sv();
+  updHdr();rnTd();
+  al.className='al al-ok';al.textContent='整理が完了しました（'+removed+'件の重複を削除、'+deduped.length+'件になりました）';al.style.display='block';
+  setTimeout(()=>al.style.display='none',6000);
+}
 
 /* ============================================================
    報告書グループ管理

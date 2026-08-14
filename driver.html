@@ -446,7 +446,8 @@ async function sv(){
     const eSnap=await getDoc(doc(db,'app','entries'));
     const existing=eSnap.exists()?(eSnap.data().e||[]):[];
     const others=existing.filter(e=>e.dr!==myDriver);
-    await setDoc(doc(db,'app','entries'),{e:[...others,...S.entries],ts:Date.now()});
+    const mine=S.entries.filter(e=>e.dr===myDriver);
+    await setDoc(doc(db,'app','entries'),{e:[...others,...mine],ts:Date.now()});
 
     const pSnap=await getDoc(doc(db,'app','pending'));
     const existingP=pSnap.exists()?(pSnap.data().p||[]):[];
