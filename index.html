@@ -447,7 +447,10 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div class="cl">データメンテナンス</div>
       <div class="sn">ドライバーアプリの不具合により、回収記録が重複して保存されていた期間があります（2026年8月に修正済み）。このボタンで、同じ記録の重複を安全に取り除けます（別々の記録を誤って1つにまとめることはありません）。</div>
       <div id="dedupe-al" class="al"></div>
-      <button class="btn-s" onclick="dedupeEntries()" style="width:100%;padding:11px;">重複した回収記録を整理する</button>
+      <button class="btn-s" onclick="dedupeEntries()" style="width:100%;padding:11px;margin-bottom:10px;">重複した回収記録を整理する</button>
+      <div class="sn">回収先の一括登録時に、誤ってドライバー名が回収先として紛れ込んでしまった場合、下のボタンでドライバー一覧と同じ名前の回収先を検出して削除できます。</div>
+      <div id="locclean-al" class="al"></div>
+      <button class="btn-s" onclick="cleanDriverNamedLocations()" style="width:100%;padding:11px;">回収先リストからドライバー名を検出して削除する</button>
     </div>
 
     <!-- 月次回収量シート自動連携 -->
@@ -1654,6 +1657,25 @@ async function dedupeEntries(){
   await sv();
   updHdr();rnTd();
   al.className='al al-ok';al.textContent='整理が完了しました（'+removed+'件の重複を削除、'+deduped.length+'件になりました）';al.style.display='block';
+  setTimeout(()=>al.style.display='none',6000);
+}
+
+/* ---- ドライバー名が紛れ込んだ回収先の整理 ---- */
+function cleanDriverNamedLocations(){
+  const al=document.getElementById('locclean-al');
+  const driverNames=new Set(S.drivers);
+  const toRemove=S.locations.filter(l=>driverNames.has(l.name));
+  const kept=S.locations.filter(l=>!driverNames.has(l.name));
+  if(!toRemove.length){
+    al.className='al al-ok';al.textContent='ドライバー名と同じ回収先は見つかりませんでした';al.style.display='block';
+    setTimeout(()=>al.style.display='none',4000);
+    return;
+  }
+  const names=toRemove.map(l=>l.name).join('、');
+  if(!confirm(`以下の${toRemove.length}件が、ドライバー名と同じ名前で回収先として登録されています。削除しますか？\n\n${names}`))return;
+  S.locations=kept;
+  sv();rnLocL();updHdr();rfGrpSel();
+  al.className='al al-ok';al.textContent=toRemove.length+'件削除しました（'+names+'）';al.style.display='block';
   setTimeout(()=>al.style.display='none',6000);
 }
 
