@@ -503,7 +503,13 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       </div>
       <div class="r2">
         <div class="fg"><label>住所（任意）</label><input type="text" id="nl-ad" placeholder="渋谷区..."/></div>
-        <div class="fg"><label>グループ名（任意）</label><input type="text" id="nl-grp" placeholder="例: 〇〇チェーン"/></div>
+        <div class="fg"><label>報告書グループ（任意）</label>
+          <select id="nl-grp-sel" onchange="toggleNlGrpNew()" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;-webkit-appearance:none;appearance:none;">
+            <option value="">なし</option>
+            <option value="__new__">＋ 新しい報告書グループを作成...</option>
+          </select>
+          <input type="text" id="nl-grp-new" placeholder="新しい報告書グループ名" style="display:none;margin-top:6px;width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;"/>
+        </div>
       </div>
       <div class="fg"><label>担当者（任意）</label><input type="text" id="nl-ct2" placeholder="田中様"/></div>
       <button class="btn-s" onclick="addLoc()" style="width:100%;padding:11px;">追加する</button>
@@ -527,7 +533,8 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div class="cl">報告書グループ管理</div>
       <div class="sn">チェーン本社など、月次報告書を送る先をグループとして登録します。回収先のグループ名と紐づけて使います。</div>
       <div id="rgrp-al" class="al"></div>
-      <button class="btn-s" onclick="autoCreateRgrps()" style="width:100%;padding:11px;margin-bottom:12px;">&#128230; 回収先リストのグループ名から自動登録</button>
+      <button class="btn-s" onclick="autoCreateRgrps()" style="width:100%;padding:11px;margin-bottom:8px;">&#128230; 回収先リストのグループ名から自動登録</button>
+      <button class="btn-s" onclick="cleanDriverNamedReportGroups()" style="width:100%;padding:11px;margin-bottom:12px;">&#129529; ドライバー名が紛れ込んだグループを整理する</button>
       <div class="fg"><label>グループ名 *</label><input type="text" id="rgrp-name" placeholder="例: ○○フードグループ"/></div>
       <div class="fg"><label>宛先会社名 *</label><input type="text" id="rgrp-co" placeholder="例: 株式会社○○フード"/></div>
       <div class="fg"><label>宛先担当者名</label><input type="text" id="rgrp-person" placeholder="例: 経理部 田中様"/></div>
@@ -535,6 +542,30 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div class="fg"><label>備考・送付方法メモ</label><input type="text" id="rgrp-note" placeholder="例: FAX 03-xxxx-xxxx / メール: xxx@xxx.com"/></div>
       <button class="btn-s" onclick="saveRgrp()" style="width:100%;padding:11px;margin-top:4px;">グループを登録・更新する</button>
       <div id="rgrp-list" style="margin-top:14px;"></div>
+    </div>
+
+    <!-- 回収先を報告書グループに紐づける -->
+    <div class="card">
+      <div class="cl">回収先を報告書グループに紐づける</div>
+      <div class="sn">登録済みの回収先を、あとからまとめて報告書グループに紐づけられます。新しいグループ名を入力すれば、その場で新規グループも作成されます。</div>
+      <div id="lg-al" class="al"></div>
+      <div class="fg"><label>報告書グループ</label>
+        <select id="lg-grp-sel" onchange="toggleLgGrpNew()" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;-webkit-appearance:none;appearance:none;">
+          <option value="">--- 選択してください ---</option>
+          <option value="__new__">＋ 新しい報告書グループを作成...</option>
+        </select>
+        <input type="text" id="lg-grp-new" placeholder="新しい報告書グループ名" style="display:none;margin-top:6px;width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;"/>
+      </div>
+      <div class="fg">
+        <label>紐づける回収先（複数選択可）</label>
+        <div class="sw">
+          <span class="si">&#128269;</span>
+          <input type="text" id="lg-src" placeholder="店名・住所・グループ名で検索..." oninput="srchLgLoc()" onfocus="srchLgLoc()" autocomplete="off"/>
+        </div>
+        <div class="dd" id="lg-dd"></div>
+        <div class="sel-tags" id="lg-sel-tags"></div>
+      </div>
+      <button class="btn-s" onclick="linkLocsToGroup()" style="width:100%;padding:11px;">紐づける</button>
     </div>
 
     <!-- データ管理 -->
@@ -678,7 +709,7 @@ async function init(){
   document.getElementById('r-mo').value=tm();
   document.getElementById('rg-mo').value=tm();
   document.getElementById('rg-all-mo').value=tm();
-  rfDrv();rnDrvL();rnLocL();rnTd();updHdr();rfGrpSel();rfAcctSel();rnAcctList();rfRgrpSel();rnRgrpList();rnPendingList();rfRouteDrvSel();rnRouteList();rnSheetSync();
+  rfDrv();rnDrvL();rnLocL();rnTd();updHdr();rfGrpSel();rfAcctSel();rnAcctList();rfRgrpSel();rnRgrpList();rnPendingList();rfRouteDrvSel();rnRouteList();rnSheetSync();rfLgGrpSel();rfNlGrpSel();
   showSyncStatus('同期済み ✓',true);
 }
 async function ldWhenReady(){
@@ -820,6 +851,95 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('#rt-src')&&!e.target.closest('#rt-dd'))
     document.getElementById('rt-dd')&&document.getElementById('rt-dd').classList.remove('open');
 });
+
+/* ---- 回収先を報告書グループに紐づける ---- */
+let lgSel=[];
+let lgSearchHits=[];
+function rfLgGrpSel(){
+  const sel=document.getElementById('lg-grp-sel');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">--- 選択してください ---</option>'+
+    S.reportGroups.map(g=>`<option value="${g.name}">${g.name}</option>`).join('')+
+    '<option value="__new__">＋ 新しい報告書グループを作成...</option>';
+  if(cur&&[...sel.options].some(o=>o.value===cur))sel.value=cur;
+}
+function toggleLgGrpNew(){
+  const v=document.getElementById('lg-grp-sel').value;
+  document.getElementById('lg-grp-new').style.display=v==='__new__'?'block':'none';
+}
+function srchLgLoc(){
+  const q=document.getElementById('lg-src').value.trim().toLowerCase();
+  const dd=document.getElementById('lg-dd');
+  const hits=q
+    ? S.locations.filter(l=>l.name.toLowerCase().includes(q)||(l.addr||'').toLowerCase().includes(q)||(l.grp||'').toLowerCase().includes(q)).slice(0,20)
+    : S.locations.slice(0,10);
+  lgSearchHits=hits;
+  if(!hits.length){
+    dd.innerHTML='<div class="ddi" style="color:#bbb;">該当なし</div>';
+    dd.classList.add('open');return;
+  }
+  dd.innerHTML=hits.map((l,i)=>`<div class="ddi" data-idx="${i}">
+    <div class="ddi-name">${escHtml(l.name)}${l.grp?` <span style="font-size:10px;color:#999;font-weight:400;">[現在: ${escHtml(l.grp)}]</span>`:''}</div>
+    <div class="ddi-sub">${escHtml(l.cat)}${l.addr?' · '+escHtml(l.addr):''}</div>
+  </div>`).join('');
+  dd.classList.add('open');
+}
+function pickFromLgDD(idx){
+  const l=lgSearchHits[idx];
+  if(!l)return;
+  if(!lgSel.includes(l.name))lgSel.push(l.name);
+  document.getElementById('lg-src').value='';
+  document.getElementById('lg-dd').classList.remove('open');
+  rnLgSel();
+}
+function rnLgSel(){
+  document.getElementById('lg-sel-tags').innerHTML=lgSel.map(n=>
+    `<span class="tag">${escHtml(n)}<span class="tx" onclick="rmLgSel(${JSON.stringify(n)})">×</span></span>`
+  ).join('');
+}
+function rmLgSel(n){lgSel=lgSel.filter(x=>x!==n);rnLgSel();}
+
+(function(){
+  const dd=document.getElementById('lg-dd');
+  if(!dd)return;
+  const onPick=e=>{
+    const item=e.target.closest('.ddi[data-idx]');
+    if(!item)return;
+    e.preventDefault();
+    e.stopPropagation();
+    pickFromLgDD(parseInt(item.dataset.idx,10));
+  };
+  dd.addEventListener('mousedown',onPick);
+  dd.addEventListener('touchend',onPick,{passive:false});
+})();
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#lg-src')&&!e.target.closest('#lg-dd'))
+    document.getElementById('lg-dd')&&document.getElementById('lg-dd').classList.remove('open');
+});
+
+function linkLocsToGroup(){
+  const al=document.getElementById('lg-al');
+  const sel=document.getElementById('lg-grp-sel');
+  let grpName=sel.value;
+  if(grpName==='__new__'){
+    grpName=document.getElementById('lg-grp-new').value.trim();
+    if(!grpName){showAl(al,'err','新しい報告書グループ名を入力してください');return;}
+    if(!S.reportGroups.some(g=>g.name===grpName)){
+      S.reportGroups.push({name:grpName,co:grpName,person:'',addr:'',note:''});
+    }
+  }
+  if(!grpName){showAl(al,'err','報告書グループを選択してください');return;}
+  if(!lgSel.length){showAl(al,'err','回収先を1件以上選択してください');return;}
+  let count=0;
+  S.locations.forEach(l=>{if(lgSel.includes(l.name)){l.grp=grpName;count++;}});
+  sv();rnLocL();rfGrpSel();rnRgrpList();rfRgrpSel();rfLgGrpSel();rfNlGrpSel();
+  lgSel=[];rnLgSel();
+  document.getElementById('lg-grp-new').value='';
+  document.getElementById('lg-grp-new').style.display='none';
+  sel.value='';
+  showAl(al,'ok',count+'件の回収先を「'+grpName+'」に紐づけました');
+}
 
 const WD_LABEL={mon:'月曜日',tue:'火曜日',wed:'水曜日',thu:'木曜日',fri:'金曜日'};
 function rfRouteDrvSel(){
@@ -1240,10 +1360,9 @@ function rnMon(){
 
 /* ---- グループセレクタ更新 ---- */
 function rfGrpSel(){
-  const grps=[...new Set(S.locations.map(l=>l.grp).filter(g=>g))].sort();
   const sel=document.getElementById('r-grp-sel');
   sel.innerHTML='<option value="">全店舗（グループ問わず）</option>'+
-    grps.map(g=>`<option value="${g}">${g}</option>`).join('');
+    S.reportGroups.map(g=>`<option value="${g.name}">${g.name}</option>`).join('');
 }
 
 /* ---- 報告書種別切替 ---- */
@@ -1553,22 +1672,42 @@ function rmLoc(i){S.locations.splice(i,1);sv();rnLocL();updHdr();rfGrpSel();}
 function clrLocs(){S.locations=[];sv();rnLocL();updHdr();rfGrpSel();}
 
 /* ---- マスタ：手動追加 ---- */
+function rfNlGrpSel(){
+  const sel=document.getElementById('nl-grp-sel');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">なし</option>'+
+    S.reportGroups.map(g=>`<option value="${g.name}">${g.name}</option>`).join('')+
+    '<option value="__new__">＋ 新しい報告書グループを作成...</option>';
+  if(cur&&[...sel.options].some(o=>o.value===cur))sel.value=cur;
+}
+function toggleNlGrpNew(){
+  const v=document.getElementById('nl-grp-sel').value;
+  document.getElementById('nl-grp-new').style.display=v==='__new__'?'block':'none';
+}
 function addLoc(){
   const nm=document.getElementById('nl-nm').value.trim();
   if(!nm){return;}
   const cat=document.getElementById('nl-ct').value;
   const addr=document.getElementById('nl-ad').value.trim();
-  const grp=document.getElementById('nl-grp').value.trim();
+  let grp=document.getElementById('nl-grp-sel').value;
   const ct=document.getElementById('nl-ct2').value.trim();
+  if(grp==='__new__'){
+    grp=document.getElementById('nl-grp-new').value.trim();
+    if(grp&&!S.reportGroups.some(g=>g.name===grp)){
+      S.reportGroups.push({name:grp,co:grp,person:'',addr:'',note:''});
+    }
+  }
   if(S.locations.find(l=>l.name===nm)){
     alert(nm+' はすでに登録されています');return;
   }
   S.locations.push({name:nm,cat,addr,grp,ct});
   document.getElementById('nl-nm').value='';
   document.getElementById('nl-ad').value='';
-  document.getElementById('nl-grp').value='';
+  document.getElementById('nl-grp-sel').value='';
+  document.getElementById('nl-grp-new').value='';
+  document.getElementById('nl-grp-new').style.display='none';
   document.getElementById('nl-ct2').value='';
-  sv();rnLocL();updHdr();rfGrpSel();
+  sv();rnLocL();updHdr();rfGrpSel();rnRgrpList();rfRgrpSel();rfLgGrpSel();rfNlGrpSel();
 }
 
 /* ---- 回収先一覧表示 ---- */
@@ -1675,6 +1814,24 @@ function cleanDriverNamedLocations(){
   setTimeout(()=>al.style.display='none',6000);
 }
 
+/* ---- ドライバー名が紛れ込んだ報告書グループの整理 ---- */
+function cleanDriverNamedReportGroups(){
+  const al=document.getElementById('rgrp-al');
+  const driverNames=new Set(S.drivers);
+  const badGroups=S.reportGroups.filter(g=>driverNames.has(g.name));
+  const affectedLocs=S.locations.filter(l=>driverNames.has(l.grp));
+  if(!badGroups.length&&!affectedLocs.length){
+    showAl(al,'ok','ドライバー名と同じ報告書グループは見つかりませんでした');
+    return;
+  }
+  const names=[...new Set([...badGroups.map(g=>g.name),...affectedLocs.map(l=>l.grp)])].join('、');
+  if(!confirm(`ドライバー名と同じ報告書グループ、またはドライバー名がグループ欄に入っている回収先が見つかりました：\n\n${names}\n\n報告書グループを削除し、該当する回収先のグループ欄を空にします。よろしいですか？`))return;
+  S.reportGroups=S.reportGroups.filter(g=>!driverNames.has(g.name));
+  S.locations.forEach(l=>{if(driverNames.has(l.grp))l.grp='';});
+  sv();rnRgrpList();rfRgrpSel();rfLgGrpSel();rfNlGrpSel();rfGrpSel();rnLocL();
+  showAl(al,'ok',names+' を整理しました');
+}
+
 /* ============================================================
    報告書グループ管理
    ============================================================ */
@@ -1704,7 +1861,7 @@ function saveRgrp(){
   document.getElementById('rgrp-person').value='';
   document.getElementById('rgrp-addr').value='';
   document.getElementById('rgrp-note').value='';
-  sv();rnRgrpList();rfRgrpSel();
+  sv();rnRgrpList();rfRgrpSel();rfLgGrpSel();rfNlGrpSel();
 }
 
 function rnRgrpList(){
@@ -1743,7 +1900,7 @@ function editRgrp(i){
 function delRgrp(i){
   const name=S.reportGroups[i].name;
   S.reportGroups.splice(i,1);
-  sv();rnRgrpList();rfRgrpSel();
+  sv();rnRgrpList();rfRgrpSel();rfLgGrpSel();rfNlGrpSel();
   const al=document.getElementById('rgrp-al');
   al.className='al al-ok';al.textContent='「'+name+'」を削除しました';al.style.display='block';
   setTimeout(()=>al.style.display='none',3000);
@@ -1775,7 +1932,7 @@ function syncRgrpsFromLocations(){
 }
 function autoCreateRgrps(){
   const created=syncRgrpsFromLocations();
-  if(created>0){sv();rnRgrpList();rfRgrpSel();}
+  if(created>0){sv();rnRgrpList();rfRgrpSel();rfLgGrpSel();rfNlGrpSel();}
   const al=document.getElementById('rgrp-al');
   const withGrp=S.locations.filter(l=>(l.grp||'').trim()).length;
   const uniqGrp=new Set(S.locations.map(l=>(l.grp||'').trim()).filter(Boolean)).size;
