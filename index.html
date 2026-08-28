@@ -149,12 +149,12 @@ window.FB_AUTH = auth;
 window.FB_SIGNOUT = () => signOut(auth);
 
 // 管理者メールアドレス（このメールでログインした人だけ管理者として使える）
-const ADMIN_EMAIL = 'shinai.energy@gmail.com';
+const ADMIN_EMAILS = ['shinai.energy@gmail.com', 'asuka.kawahara.024@gmail.com'];
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
     window.FB_USER = user;
-    window.FB_IS_ADMIN = (user.email === ADMIN_EMAIL);
+    window.FB_IS_ADMIN = ADMIN_EMAILS.includes(user.email);
     window.FB_READY = true;
     window.dispatchEvent(new Event('fb-ready'));
   } else {
