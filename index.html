@@ -708,12 +708,8 @@ function updHdr(){
     '今月 <b>'+mTot.toFixed(1)+'L</b> / 累計 <b>'+tot.toFixed(1)+'L</b>';
 }
 
-/* index.htmlの入力タブを使うドライバー（該当者がいない場合は全員を表示） */
-const INP_TAB_DRIVERS=['朝比奈','遠山'];
 function rfDrv(){
-  const filtered=S.drivers.filter(d=>INP_TAB_DRIVERS.some(n=>d.includes(n)));
-  const list=filtered.length?filtered:S.drivers;
-  document.getElementById('i-dr').innerHTML=list.map(d=>`<option>${d}</option>`).join('');
+  document.getElementById('i-dr').innerHTML=S.drivers.map(d=>`<option>${d}</option>`).join('');
 }
 
 /* ---- 回収先検索・選択 ---- */
