@@ -1101,10 +1101,9 @@ function loadDefaultRoute(){
     showAl(al,'err',`「${dr}」の${WD_LABEL[wdKey]}の標準ルートが見つかりません。マスタ設定「ドライバー別 曜日デフォルトルート」で、ドライバー名が「${dr}」と一字一句同じになっているか確認してください。`);
     return;
   }
-  const already=new Set([
-    ...S.pending.filter(p=>p.date===dt&&p.dr===dr).map(p=>p.loc),
-    ...S.entries.filter(e=>e.date===dt&&e.dr===dr).map(e=>e.loc)
-  ]);
+  const pendingMine=S.pending.filter(p=>p.date===dt&&p.dr===dr).map(p=>p.loc);
+  const entriesMine=S.entries.filter(e=>e.date===dt&&e.dr===dr).map(e=>e.loc);
+  const already=new Set([...pendingMine,...entriesMine]);
   let added=0;
   route.locs.forEach(loc=>{
     if(already.has(loc))return;
@@ -1113,7 +1112,7 @@ function loadDefaultRoute(){
     added++;
   });
   if(added>0){sv();rnPendingList();showAl(al,'ok',`標準ルート${route.locs.length}件のうち${added}件を回収予定に追加しました`);}
-  else showAl(al,'err',`標準ルートの回収先（${route.locs.join('、')}）は、${dt}の「${dr}」の回収予定または回収記録にすでに存在するため追加しませんでした。心当たりがない場合はこの画面のスクリーンショットを教えてください。`);
+  else showAl(al,'err',`[診断] ルート件数=${route.locs.length} / 既存の回収予定=${pendingMine.length}件(${pendingMine.join('、')||'なし'}) / 既存の回収記録=${entriesMine.length}件(${entriesMine.join('、')||'なし'}) / 重複と判定された件数=${already.size} / 新規追加=${added}件。この文章をそのままスクリーンショットで教えてください。`);
 }
 
 /* ---- 登録 ---- */
