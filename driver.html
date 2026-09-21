@@ -705,6 +705,7 @@ function addPending(){
 }
 
 /* ===== 本日の標準ルートを回収予定に追加（ルートの登録・編集はマスタ側のindex.htmlで行う） ===== */
+const WD_LABEL={mon:'月曜日',tue:'火曜日',wed:'水曜日',thu:'木曜日',fri:'金曜日'};
 function loadDefaultRoute(){
   const dt=document.getElementById('i-dt').value;
   const dr=document.getElementById('i-dr').value;
@@ -713,8 +714,11 @@ function loadDefaultRoute(){
   if(!dr||dr===''){showAl(al,'err','ドライバーを選択してください（マスタで登録が必要です）');return;}
   const wdKey=['sun','mon','tue','wed','thu','fri','sat'][new Date(dt+'T00:00:00').getDay()];
   if(wdKey==='sat'||wdKey==='sun'){showAl(al,'err','土日の標準ルートは設定できません');return;}
-  const route=S.routes.find(r=>r.driver===dr&&r.wd===wdKey);
-  if(!route||!route.locs.length){showAl(al,'err','この曜日の標準ルートが登録されていません（管理者にマスタ設定での登録を依頼してください）');return;}
+  const route=S.routes.find(r=>r.driver.trim()===dr.trim()&&r.wd===wdKey);
+  if(!route||!route.locs.length){
+    showAl(al,'err',`「${dr}」の${WD_LABEL[wdKey]}の標準ルートが見つかりません。マスタ設定「ドライバー別 曜日デフォルトルート」で、ドライバー名が「${dr}」と一字一句同じになっているか確認してください。`);
+    return;
+  }
   const already=new Set([
     ...S.pending.filter(p=>p.date===dt&&p.dr===dr).map(p=>p.loc),
     ...S.entries.filter(e=>e.date===dt&&e.dr===dr).map(e=>e.loc)
