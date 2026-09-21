@@ -845,7 +845,8 @@ function buildMonthSel(){
 
 function rnSummary(){
   const m=document.getElementById('s-mo').value;
-  const es=S.entries.filter(e=>e.date.startsWith(m));
+  const myDriver=document.getElementById('i-dr').value;
+  const es=S.entries.filter(e=>e.date.startsWith(m)&&e.dr===myDriver);
   const tot=es.reduce((s,e)=>s+e.a,0);
   const days=[...new Set(es.map(e=>e.date))].length;
   const locs=[...new Set(es.map(e=>e.loc))].length;
@@ -877,7 +878,8 @@ function rnSummary(){
 
 function buildDataText(){
   const m=document.getElementById('s-mo').value;
-  const es=S.entries.filter(e=>e.date.startsWith(m));
+  const myDriver=document.getElementById('i-dr').value;
+  const es=S.entries.filter(e=>e.date.startsWith(m)&&e.dr===myDriver);
   if(!es.length)return null;
   const [yr,mo]=m.split('-');
   const tot=es.reduce((s,e)=>s+e.a,0);
@@ -913,7 +915,8 @@ function rnPreview(){
   }
   prev.textContent=txt;
   const m=document.getElementById('s-mo').value;
-  const es=S.entries.filter(e=>e.date.startsWith(m));
+  const myDriver=document.getElementById('i-dr').value;
+  const es=S.entries.filter(e=>e.date.startsWith(m)&&e.dr===myDriver);
   if(cnt)cnt.textContent=es.length+'件';
 }
 
