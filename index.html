@@ -214,7 +214,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div class="cl">回収データ入力</div>
       <div id="ia" class="al"></div>
       <div class="r2">
-        <div class="fg"><label>回収日</label><input type="date" id="i-dt"/></div>
+        <div class="fg"><label>回収日</label><input type="date" id="i-dt" onchange="rnTd()"/></div>
         <div class="fg"><label>ドライバー</label><select id="i-dr"></select></div>
       </div>
       <button class="btn-s" onclick="loadDefaultRoute()" style="width:100%;margin-bottom:12px;">&#128663; 本日の標準ルートを追加</button>
