@@ -1113,7 +1113,7 @@ function loadDefaultRoute(){
     added++;
   });
   if(added>0){sv();rnPendingList();showAl(al,'ok',`標準ルート${route.locs.length}件のうち${added}件を回収予定に追加しました`);}
-  else showAl(al,'ok','標準ルートは全て既に回収予定または登録済みです');
+  else showAl(al,'err',`標準ルートの回収先（${route.locs.join('、')}）は、${dt}の「${dr}」の回収予定または回収記録にすでに存在するため追加しませんでした。心当たりがない場合はこの画面のスクリーンショットを教えてください。`);
 }
 
 /* ---- 登録 ---- */
