@@ -214,7 +214,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div class="cl">回収データ入力</div>
       <div id="ia" class="al"></div>
       <div class="r2">
-        <div class="fg"><label>回収日</label><input type="date" id="i-dt" onchange="rnTd()"/></div>
+        <div class="fg"><label>回収日</label><input type="date" id="i-dt" onchange="rnTd();rnPendingList();"/></div>
         <div class="fg"><label>ドライバー</label><select id="i-dr" onchange="rnPendingList()"></select></div>
       </div>
       <button class="btn-s" onclick="loadDefaultRoute()" style="width:100%;margin-bottom:12px;">&#128663; 本日の標準ルートを追加</button>
@@ -241,7 +241,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
 
     <div class="card" id="pending-card" style="display:none;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div class="cl" style="margin:0;">回収予定（数量未入力）</div>
+        <div class="cl" style="margin:0;" id="pending-cl">回収予定（数量未入力）</div>
         <span id="pending-cnt" style="font-size:12px;color:#888;font-weight:600;"></span>
       </div>
       <button class="btn-p" onclick="finishAllPending()" style="width:100%;margin-bottom:10px;">数量を入力した分をまとめて登録する</button>
@@ -512,6 +512,20 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         </div>
       </div>
       <div class="fg"><label>担当者（任意）</label><input type="text" id="nl-ct2" placeholder="田中様"/></div>
+      <div class="fg">
+        <label>標準ルートへの登録（任意）</label>
+        <div class="sn" style="margin:0 0 8px;">ドライバーと曜日を選ぶと、そのドライバーの曜日デフォルトルートにこの回収先が自動で追加され、次回からその曜日の「本日の標準ルートを追加」に表示されます。</div>
+        <select id="nl-route-dr" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;-webkit-appearance:none;appearance:none;margin-bottom:8px;">
+          <option value="">担当ドライバーを指定しない</option>
+        </select>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="mon"/> 月</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="tue"/> 火</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="wed"/> 水</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="thu"/> 木</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="fri"/> 金</label>
+        </div>
+      </div>
       <button class="btn-s" onclick="addLoc()" style="width:100%;padding:11px;">追加する</button>
     </div>
 
@@ -709,7 +723,7 @@ async function init(){
   document.getElementById('r-mo').value=tm();
   document.getElementById('rg-mo').value=tm();
   document.getElementById('rg-all-mo').value=tm();
-  [rfDrv,rnDrvL,rnLocL,rnTd,updHdr,rfGrpSel,rfAcctSel,rnAcctList,rfRgrpSel,rnRgrpList,rnPendingList,rfRouteDrvSel,rnRouteList,rnSheetSync,rfLgGrpSel,rfNlGrpSel].forEach(fn=>{
+  [rfDrv,rnDrvL,rnLocL,rnTd,updHdr,rfGrpSel,rfAcctSel,rnAcctList,rfRgrpSel,rnRgrpList,rnPendingList,rfRouteDrvSel,rnRouteList,rnSheetSync,rfLgGrpSel,rfNlGrpSel,rfNlRouteDrSel].forEach(fn=>{
     try{fn();}catch(x){console.error(fn.name+' failed',x);}
   });
   showSyncStatus('同期済み ✓',true);
@@ -1169,9 +1183,15 @@ function rnPendingList(){
   const card=document.getElementById('pending-card');
   const cnt=document.getElementById('pending-cnt');
   const el=document.getElementById('pending-list');
+  const cl=document.getElementById('pending-cl');
   if(!card||!el)return;
   const myDriver=document.getElementById('i-dr').value;
-  const mine=S.pending.filter(p=>p.dr===myDriver);
+  const d=document.getElementById('i-dt').value||td();
+  const mine=S.pending.filter(p=>p.dr===myDriver&&p.date===d);
+  if(cl){
+    const dObj=new Date(d+'T00:00:00');
+    cl.textContent=(dObj.getMonth()+1)+'月'+dObj.getDate()+'日の回収予定（数量未入力）';
+  }
   if(!mine.length){card.style.display='none';return;}
   card.style.display='block';
   cnt.textContent=mine.length+'件';
@@ -1567,14 +1587,14 @@ function cpRep(){
 /* ---- マスタ：ドライバー ---- */
 function addDrv(){
   const v=document.getElementById('nd').value.trim();
-  if(v&&!S.drivers.includes(v)){S.drivers.push(v);document.getElementById('nd').value='';sv();rnDrvL();rfDrv();rfAcctSel();}
+  if(v&&!S.drivers.includes(v)){S.drivers.push(v);document.getElementById('nd').value='';sv();rnDrvL();rfDrv();rfAcctSel();rfNlRouteDrSel();}
 }
 function rnDrvL(){
   document.getElementById('drv-l').innerHTML=S.drivers.map((d,i)=>
     `<div class="erow"><span style="font-size:13px;font-weight:500;">${d}</span><button onclick="rmDrv(${i})" class="btn-d" style="padding:6px 12px;font-size:12px;">削除</button></div>`
   ).join('')||'<div class="empty">ドライバーが未登録です</div>';
 }
-function rmDrv(i){S.drivers.splice(i,1);sv();rnDrvL();rfDrv();}
+function rmDrv(i){S.drivers.splice(i,1);sv();rnDrvL();rfDrv();rfNlRouteDrSel();}
 
 /* ---- マスタ：回収先インポート ---- */
 function parseImportData(raw){
@@ -1693,6 +1713,13 @@ function toggleNlGrpNew(){
   const v=document.getElementById('nl-grp-sel').value;
   document.getElementById('nl-grp-new').style.display=v==='__new__'?'block':'none';
 }
+function rfNlRouteDrSel(){
+  const sel=document.getElementById('nl-route-dr');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">担当ドライバーを指定しない</option>'+
+    S.drivers.map(d=>`<option value="${d}">${d}</option>`).join('');
+  if(cur&&[...sel.options].some(o=>o.value===cur))sel.value=cur;
+}
 function addLoc(){
   const nm=document.getElementById('nl-nm').value.trim();
   if(!nm){return;}
@@ -1710,13 +1737,28 @@ function addLoc(){
     alert(nm+' はすでに登録されています');return;
   }
   S.locations.push({name:nm,cat,addr,grp,ct});
+
+  const routeDr=document.getElementById('nl-route-dr').value;
+  const wds=[...document.querySelectorAll('.nl-wd:checked')].map(c=>c.value);
+  let routeAdded=0;
+  if(routeDr&&wds.length){
+    wds.forEach(wd=>{
+      let route=S.routes.find(r=>r.driver===routeDr&&r.wd===wd);
+      if(!route){route={driver:routeDr,wd,locs:[]};S.routes.push(route);}
+      if(!route.locs.includes(nm)){route.locs.push(nm);routeAdded++;}
+    });
+  }
+
   document.getElementById('nl-nm').value='';
   document.getElementById('nl-ad').value='';
   document.getElementById('nl-grp-sel').value='';
   document.getElementById('nl-grp-new').value='';
   document.getElementById('nl-grp-new').style.display='none';
   document.getElementById('nl-ct2').value='';
+  document.getElementById('nl-route-dr').value='';
+  document.querySelectorAll('.nl-wd').forEach(c=>c.checked=false);
   sv();rnLocL();updHdr();rfGrpSel();rnRgrpList();rfRgrpSel();rfLgGrpSel();rfNlGrpSel();
+  if(routeAdded>0)rnRouteList();
 }
 
 /* ---- 回収先一覧表示 ---- */
