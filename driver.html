@@ -368,7 +368,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
   <!-- ===== 回収先追加タブ ===== -->
   <div id="sec-loc" class="sec">
     <div class="card">
-      <div class="cl">新規回収先を追加 <span class="new-loc-badge">NEW</span></div>
+      <div class="cl" id="loc-form-title">新規回収先を追加 <span class="new-loc-badge">NEW</span></div>
       <div id="loc-al" class="al"></div>
       <div class="fg">
         <label>回収先名 <span style="color:#c0392b;">*</span></label>
@@ -393,7 +393,21 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         <label>担当者名 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意）</span></label>
         <input type="text" id="nl-ct2" placeholder="例: 山田様" autocomplete="off"/>
       </div>
-      <button class="btn-p green" onclick="addLoc()">追加する</button>
+      <div class="fg">
+        <label>自分の回収曜日 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意）</span></label>
+        <div style="font-size:11px;color:#aaa;margin-bottom:6px;">チェックした曜日の「本日の標準ルートを追加」に、この回収先が表示されるようになります。</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="mon"/> 月</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="tue"/> 火</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="wed"/> 水</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="thu"/> 木</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="fri"/> 金</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-p green" id="loc-save-btn" onclick="addLoc()" style="flex:1;">追加する</button>
+        <button class="btn-s" id="loc-cancel-btn" onclick="cancelLocEdit()" style="display:none;">キャンセル</button>
+      </div>
     </div>
 
     <div class="card">
@@ -972,25 +986,98 @@ function expCSV(){
   copyData();
 }
 
-/* ===== 回収先追加 ===== */
+/* ===== 回収先追加・編集 ===== */
+let editingLocName=null;
 function addLoc(){
   const nm=document.getElementById('nl-nm').value.trim();
   const al=document.getElementById('loc-al');
   if(!nm){showAl(al,'err','回収先名を入力してください');return;}
+  const cat=document.getElementById('nl-ct').value;
+  const addr=document.getElementById('nl-ad').value.trim();
+  const grp=document.getElementById('nl-grp').value.trim();
+  const ct=document.getElementById('nl-ct2').value.trim();
+  const myDriver=document.getElementById('i-dr').value;
+  const wds=[...document.querySelectorAll('.nl-wd:checked')].map(c=>c.value);
+
+  if(editingLocName){
+    if(nm!==editingLocName&&S.locations.find(l=>l.name===nm)){
+      showAl(al,'err',nm+' はすでに別の回収先として登録されています');return;
+    }
+    const loc=S.locations.find(l=>l.name===editingLocName);
+    if(!loc){showAl(al,'err','編集対象が見つかりません');cancelLocEdit();return;}
+    const oldName=loc.name;
+    loc.name=nm;loc.cat=cat;loc.addr=addr;loc.grp=grp;loc.ct=ct;
+    if(oldName!==nm){
+      S.routes.forEach(r=>{
+        const idx=r.locs.indexOf(oldName);
+        if(idx>=0)r.locs[idx]=nm;
+      });
+    }
+    ['mon','tue','wed','thu','fri'].forEach(wd=>{
+      let route=S.routes.find(r=>r.driver===myDriver&&r.wd===wd);
+      const shouldHave=wds.includes(wd);
+      const has=route&&route.locs.includes(nm);
+      if(shouldHave&&!has){
+        if(!route){route={driver:myDriver,wd,locs:[]};S.routes.push(route);}
+        route.locs.push(nm);
+      }else if(!shouldHave&&has){
+        route.locs=route.locs.filter(l=>l!==nm);
+      }
+    });
+    sv();rnLocL();
+    showAl(al,'ok','「'+nm+'」を更新しました');
+    cancelLocEdit();
+    return;
+  }
+
   if(S.locations.find(l=>l.name===nm)){showAl(al,'inf',nm+' はすでに登録されています');return;}
-  S.locations.push({
-    name:nm,
-    cat:document.getElementById('nl-ct').value,
-    addr:document.getElementById('nl-ad').value.trim(),
-    grp:document.getElementById('nl-grp').value.trim(),
-    ct:document.getElementById('nl-ct2').value.trim()
-  });
+  S.locations.push({name:nm,cat,addr,grp,ct});
+  if(wds.length){
+    wds.forEach(wd=>{
+      let route=S.routes.find(r=>r.driver===myDriver&&r.wd===wd);
+      if(!route){route={driver:myDriver,wd,locs:[]};S.routes.push(route);}
+      if(!route.locs.includes(nm))route.locs.push(nm);
+    });
+  }
   document.getElementById('nl-nm').value='';
   document.getElementById('nl-ad').value='';
   document.getElementById('nl-grp').value='';
   document.getElementById('nl-ct2').value='';
+  document.querySelectorAll('.nl-wd').forEach(c=>c.checked=false);
   sv();rnLocL();
   showAl(al,'ok','「'+nm+'」を追加しました。入力タブから選択できます。');
+}
+
+function startLocEdit(name){
+  const loc=S.locations.find(l=>l.name===name);
+  if(!loc)return;
+  editingLocName=name;
+  document.getElementById('nl-nm').value=loc.name;
+  document.getElementById('nl-ct').value=loc.cat;
+  document.getElementById('nl-ad').value=loc.addr||'';
+  document.getElementById('nl-grp').value=loc.grp||'';
+  document.getElementById('nl-ct2').value=loc.ct||'';
+  const myDriver=document.getElementById('i-dr').value;
+  document.querySelectorAll('.nl-wd').forEach(c=>{
+    const route=S.routes.find(r=>r.driver===myDriver&&r.wd===c.value);
+    c.checked=!!(route&&route.locs.includes(name));
+  });
+  document.getElementById('loc-form-title').textContent='「'+name+'」を編集';
+  document.getElementById('loc-save-btn').textContent='更新する';
+  document.getElementById('loc-cancel-btn').style.display='block';
+  document.getElementById('nl-nm').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function cancelLocEdit(){
+  editingLocName=null;
+  document.getElementById('nl-nm').value='';
+  document.getElementById('nl-ad').value='';
+  document.getElementById('nl-grp').value='';
+  document.getElementById('nl-ct2').value='';
+  document.querySelectorAll('.nl-wd').forEach(c=>c.checked=false);
+  document.getElementById('loc-form-title').innerHTML='新規回収先を追加 <span class="new-loc-badge">NEW</span>';
+  document.getElementById('loc-save-btn').textContent='追加する';
+  document.getElementById('loc-cancel-btn').style.display='none';
 }
 
 function rnLocL(){
@@ -1010,10 +1097,13 @@ function rnLocL(){
     }[cat]||'background:#f0f0ee;color:#555'}">${cat}</span>`;
   el.innerHTML=fl.slice(0,60).map(l=>`<div class="erow">
     <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.name}</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">${l.grp?'['+l.grp+'] ':''}${l.addr||''}</div>
+      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(l.name)}</div>
+      <div style="font-size:10px;color:#888;margin-top:2px;">${l.grp?'['+escHtml(l.grp)+'] ':''}${escHtml(l.addr||'')}</div>
     </div>
-    <div style="flex-shrink:0;margin-left:8px;">${badge(l.cat)}</div>
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px;">
+      ${badge(l.cat)}
+      <button onclick="startLocEdit(${JSON.stringify(l.name)})" style="background:#f5f5f0;border:none;color:#555;border-radius:6px;padding:5px 9px;font-size:11px;cursor:pointer;">編集</button>
+    </div>
   </div>`).join('')+(fl.length>60?`<div style="text-align:center;padding:10px;font-size:11px;color:#aaa;">他 ${fl.length-60}件</div>`:'');
 }
 
