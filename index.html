@@ -450,7 +450,10 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <button class="btn-s" onclick="dedupeEntries()" style="width:100%;padding:11px;margin-bottom:10px;">重複した回収記録を整理する</button>
       <div class="sn">回収先の一括登録時に、誤ってドライバー名が回収先として紛れ込んでしまった場合、下のボタンでドライバー一覧と同じ名前の回収先を検出して削除できます。</div>
       <div id="locclean-al" class="al"></div>
-      <button class="btn-s" onclick="cleanDriverNamedLocations()" style="width:100%;padding:11px;">回収先リストからドライバー名を検出して削除する</button>
+      <button class="btn-s" onclick="cleanDriverNamedLocations()" style="width:100%;padding:11px;margin-bottom:10px;">回収先リストからドライバー名を検出して削除する</button>
+      <div class="sn">一括インポートで列が1つずれて取り込まれ、「種別」に住所、「住所」に報告書グループ名が入ってしまった回収先を元に戻します（グループの紐づけも復元されます）。</div>
+      <div id="locshift-al" class="al"></div>
+      <button class="btn-s" onclick="repairShiftedLocations()" style="width:100%;padding:11px;">列ずれした回収先を元に戻す</button>
     </div>
 
     <!-- 月次回収量シート自動連携 -->
@@ -1657,6 +1660,11 @@ function impCSV(){
   const rows=parseImportData(raw);
   const al=document.getElementById('imp-res');
   if(!rows.length){showAl(al,'err','データを入力してください');return;}
+  const badCat=rows.filter(p=>p[0]&&p[1]&&!LOC_CATS.includes(p[1])).length;
+  if(badCat>rows.length/2){
+    showAl(al,'err',`2列目が「種別」になっていない行が ${badCat}件 あります（例：「${escHtml(rows.find(p=>p[1]&&!LOC_CATS.includes(p[1]))[1])}」）。列の順番は「回収先名・種別・住所・グループ・担当者」です。種別がない場合は、2列目に空の列を入れてから取り込んでください。`);
+    return;
+  }
   let added=0,skipped=0,updated=0;const similar=[];
   rows.forEach(p=>{
     const nm=p[0];
@@ -1823,6 +1831,33 @@ function genSmpl(){
 function clrEnts(){S.entries=[];sv();updHdr();rnTd();}
 
 /* ---- 重複した回収記録の整理（driver.htmlの保存不具合対策） ---- */
+const LOC_CATS=['飲食店','ホテル・旅館','食品工場','スーパー','給食施設','病院・福祉施設','その他'];
+/* 一括インポートで列が1つずれた回収先（種別←住所、住所←グループ名）を元に戻す */
+async function repairShiftedLocations(){
+  const al=document.getElementById('locshift-al');
+  const grpNames=new Set(S.reportGroups.map(g=>g.name));
+  const drv=new Set(S.drivers);
+  const toGrp=v=>(v&&v!=='-'&&!drv.has(v))?v:'';
+  const fixes=[];
+  S.locations.forEach(l=>{
+    if(!LOC_CATS.includes(l.cat)){
+      // 種別欄に住所が入っている＝列ずれ。住所欄にはグループ名（または空）が入っている
+      fixes.push({l,cat:'飲食店',addr:l.cat||'',grp:l.grp||toGrp(l.addr)});
+    }else if(l.addr&&grpNames.has(l.addr)){
+      // 住所が空だった店舗：住所欄にグループ名だけが入っている
+      fixes.push({l,cat:l.cat,addr:'',grp:l.grp||toGrp(l.addr)});
+    }
+  });
+  if(!fixes.length){showAl(al,'ok','列ずれした回収先は見つかりませんでした');return;}
+  const withGrp=fixes.filter(f=>f.grp).length;
+  const ex=fixes.slice(0,3).map(f=>`・${f.l.name}\n　住所：${f.addr||'（なし）'} ／ グループ：${f.grp||'（なし）'}`).join('\n');
+  if(!confirm(`列ずれした回収先が ${fixes.length}件 見つかりました（うち報告書グループの紐づけを復元 ${withGrp}件）。\n\n直した後の例：\n${ex}\n\n元に戻しますか？`))return;
+  fixes.forEach(f=>{f.l.cat=f.cat;f.l.addr=f.addr;f.l.grp=f.grp;});
+  await sv();
+  rnLocL();rnRgrpList();rfRgrpSel();rfLgGrpSel();rfNlGrpSel();rfGrpSel();
+  showAl(al,'ok',`${fixes.length}件の回収先を元に戻しました（報告書グループの紐づけ ${withGrp}件）`);
+}
+
 async function dedupeEntries(){
   const al=document.getElementById('dedupe-al');
   const before=S.entries.length;
