@@ -2018,6 +2018,12 @@ function previewGrpRep(){
   info.style.display='block';
 }
 
+/* 指定月の回収記録のうち、回収先に今紐づいている報告書グループが grpName のもの */
+function grpEntries(grpName,m){
+  const locNames=new Set(S.locations.filter(l=>l.grp===grpName).map(l=>l.name));
+  return S.entries.filter(e=>e.date&&e.date.startsWith(m)&&locNames.has(e.loc));
+}
+
 function genGrpRep(){
   const m=document.getElementById('rg-mo').value;
   const grpName=document.getElementById('rg-grp').value;
@@ -2032,31 +2038,18 @@ function genGrpRep(){
   if(!grp){showSyncStatus('グループが見つかりません',false);return;}
 
   const [yr,mo]=m.split('-');
-  const es=S.entries.filter(e=>e.date.startsWith(m)&&e.grp===grpName);
-  const tot=es.reduce((s,e)=>s+e.a,0);
-  const days=[...new Set(es.map(e=>e.date))].length;
-
-  // 店舗別集計
-  const bL={};
-  es.forEach(e=>{
-    if(!bL[e.loc])bL[e.loc]={t:0,days:new Set(),cnt:0};
-    bL[e.loc].t+=e.a;bL[e.loc].days.add(e.date);bL[e.loc].cnt++;
-  });
-
-  // 登録済み全店舗（回収なしも含める）
+  // 回収先に「今」紐づいている報告書グループで集計する（記録時のグループ名は使わない）
   const allLocs=S.locations.filter(l=>l.grp===grpName);
+  const es=grpEntries(grpName,m).sort((a,b)=>a.date.localeCompare(b.date)||a.loc.localeCompare(b.loc,'ja'));
+  const tot=es.reduce((s,e)=>s+(Number(e.a)||0),0);
   const iss=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
 
-  const locRows=allLocs.map(l=>{
-    const d=bL[l.name];
-    const amt=d?d.t:0;
-    const bg=!d||amt===0?'background:#fff8f8;':'';
-    return`<tr style="${bg}">
-      <td style="padding:6px 8px;border-bottom:1px solid #eee;">${l.name}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#888;">${l.addr||''}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${d?d.days.size:0}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:${amt>0?'700':'400'};color:${amt===0?'#bbb':'#1a1a1a'};">${amt>0?amt.toFixed(1):'－'}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;color:#888;">${tot>0&&amt>0?Math.round(amt/tot*100)+'%':'－'}</td>
+  const entRows=es.map(e=>{
+    const [,em,ed]=e.date.split('-');
+    return`<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;white-space:nowrap;">${Number(em)}月${Number(ed)}日</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;">${escHtml(e.loc)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:700;">${(Number(e.a)||0).toFixed(1)}</td>
     </tr>`;
   }).join('');
 
@@ -2082,26 +2075,21 @@ function genGrpRep(){
       <tr><td style="padding:5px 8px;color:#666;width:150px;">対象期間</td><td style="padding:5px 8px;font-weight:600;">${yr}年${mo}月1日〜${yr}年${mo}月末日</td></tr>
       <tr><td style="padding:5px 8px;color:#666;">対象グループ</td><td style="padding:5px 8px;font-weight:600;">${grpName}</td></tr>
       <tr><td style="padding:5px 8px;color:#666;">総回収量</td><td style="padding:5px 8px;font-weight:700;font-size:16px;">${tot.toFixed(1)} リットル</td></tr>
-      <tr><td style="padding:5px 8px;color:#666;">対象店舗数</td><td style="padding:5px 8px;">${allLocs.length} 店舗</td></tr>
-      <tr><td style="padding:5px 8px;color:#666;">回収実績あり</td><td style="padding:5px 8px;">${Object.keys(bL).length} 店舗</td></tr>
-      <tr><td style="padding:5px 8px;color:#666;">稼働日数</td><td style="padding:5px 8px;">${days} 日</td></tr>
+      <tr><td style="padding:5px 8px;color:#666;">回収回数</td><td style="padding:5px 8px;">${es.length} 回（対象店舗 ${allLocs.length} 店舗）</td></tr>
       ${li?`<tr><td style="padding:5px 8px;color:#666;">収集運搬許可番号</td><td style="padding:5px 8px;">${li}</td></tr>`:''}
     </table>
 
-    <h3>2. 店舗別回収明細</h3>
+    <h3>2. 回収明細</h3>
     <table style="margin-bottom:14px;font-size:11px;">
       <thead><tr>
+        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;">回収日</th>
         <th style="background:#1a1a1a;color:#fff;padding:7px 8px;">店舗名</th>
-        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;">住所</th>
-        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:center;">回収日数</th>
         <th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:right;">回収量(L)</th>
-        <th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:right;">構成比</th>
       </tr></thead>
-      <tbody>${locRows||'<tr><td colspan="5" style="text-align:center;padding:10px;color:#bbb;">データなし</td></tr>'}</tbody>
+      <tbody>${entRows||'<tr><td colspan="3" style="text-align:center;padding:10px;color:#bbb;">この月の回収記録はありません</td></tr>'}</tbody>
       <tr style="background:#f0f0eb;">
-        <td colspan="3" style="padding:6px 8px;font-weight:700;">合計</td>
+        <td colspan="2" style="padding:6px 8px;font-weight:700;">合計</td>
         <td style="padding:6px 8px;text-align:right;font-weight:700;">${tot.toFixed(1)}</td>
-        <td style="padding:6px 8px;text-align:right;">100%</td>
       </tr>
     </table>
 
@@ -2126,8 +2114,8 @@ function genAllGrpSummary(){
     return;
   }
   const rows=S.reportGroups.map(g=>{
-    const es=S.entries.filter(e=>e.date.startsWith(m)&&e.grp===g.name);
-    const tot=es.reduce((s,e)=>s+e.a,0);
+    const es=grpEntries(g.name,m);
+    const tot=es.reduce((s,e)=>s+(Number(e.a)||0),0);
     const locs=[...new Set(es.map(e=>e.loc))].length;
     const allLocs=S.locations.filter(l=>l.grp===g.name).length;
     return{g,tot,locs,allLocs,es};
