@@ -555,6 +555,17 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div id="loc-l"></div>
     </div>
 
+    <!-- 店名変更のお知らせ -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="cl" style="margin:0;">店名変更のお知らせ</div>
+        <span id="rr-cnt" style="font-size:12px;color:#888;font-weight:600;"></span>
+      </div>
+      <div class="sn">ドライバーが回収データ入力時に報告した、回収先の店名変更です。内容を確認し、問題なければ「反映する」を押してください。反映すると、回収先名と曜日デフォルトルートの該当箇所が自動で更新されます。</div>
+      <div id="rr-al" class="al"></div>
+      <div id="rr-list"></div>
+    </div>
+
     <!-- 報告書グループ管理 -->
     <div class="card">
       <div class="cl">報告書グループ管理</div>
@@ -627,7 +638,8 @@ const S={
   sel:[],
   pending:[], /* 回収予定（数量未入力）: [{id,date,dr,loc,grp}] */
   routes:[], /* 曜日デフォルトルート: [{driver,wd,locs:[name,...]}] wd:mon/tue/wed/thu/fri */
-  sheetSync:{enabled:false,url:''} /* 月次回収量シートへの自動反映設定 */
+  sheetSync:{enabled:false,url:''}, /* 月次回収量シートへの自動反映設定 */
+  renameRequests:[] /* 店名変更のお知らせ: [{id,oldName,newName,dr,date,ts}] */
 };
 
 /* ---- Firebase同期 ---- */
@@ -648,7 +660,7 @@ async function ld(){
   try{
     const db=window.FB_DB;
     const {doc,getDoc}=window.FB;
-    const [mSnap,eSnap,pSnap]=await Promise.all([getDoc(doc(db,'app','master')),getDoc(doc(db,'app','entries')),getDoc(doc(db,'app','pending'))]);
+    const [mSnap,eSnap,pSnap,rSnap]=await Promise.all([getDoc(doc(db,'app','master')),getDoc(doc(db,'app','entries')),getDoc(doc(db,'app','pending')),getDoc(doc(db,'app','renameRequests'))]);
     if(mSnap.exists()){
       const m=mSnap.data();
       if(m.d&&m.d.length)S.drivers=m.d;
@@ -659,6 +671,7 @@ async function ld(){
     }
     if(eSnap.exists()){const e=eSnap.data();if(e.e)S.entries=e.e;}
     if(pSnap.exists()){const p=pSnap.data();if(p.p)S.pending=p.p;}
+    if(rSnap.exists()){const r=rSnap.data();if(r.r)S.renameRequests=r.r;}
   }catch(x){
     try{const p=JSON.parse(localStorage.getItem('wos_v4')||'{}');if(p.d&&p.d.length)S.drivers=p.d;if(p.l&&p.l.length)S.locations=p.l;if(p.e)S.entries=p.e;if(p.rg)S.reportGroups=p.rg;if(p.p)S.pending=p.p;if(p.rt)S.routes=p.rt;}catch(e){}
   }
@@ -739,7 +752,7 @@ async function init(){
   document.getElementById('r-mo').value=tm();
   document.getElementById('rg-mo').value=tm();
   document.getElementById('rg-all-mo').value=tm();
-  [rfDrv,rnDrvL,rnLocL,rnTd,updHdr,rfGrpSel,rfAcctSel,rnAcctList,rfRgrpSel,rnRgrpList,rnPendingList,rfRouteDrvSel,rnRouteList,rnSheetSync,rfLgGrpSel,rfNlGrpSel,rfNlRouteDrSel].forEach(fn=>{
+  [rfDrv,rnDrvL,rnLocL,rnTd,updHdr,rfGrpSel,rfAcctSel,rnAcctList,rfRgrpSel,rnRgrpList,rnPendingList,rfRouteDrvSel,rnRouteList,rnSheetSync,rfLgGrpSel,rfNlGrpSel,rfNlRouteDrSel,rnRenameRequests].forEach(fn=>{
     try{fn();}catch(x){console.error(fn.name+' failed',x);}
   });
   showSyncStatus('同期済み ✓',true);
@@ -1791,6 +1804,56 @@ function dlTpl(){
 
 function rmLoc(i){S.locations.splice(i,1);sv();rnLocL();updHdr();rfGrpSel();}
 function clrLocs(){S.locations=[];sv();rnLocL();updHdr();rfGrpSel();}
+
+/* ---- 店名変更のお知らせ ---- */
+async function saveRenameRequests(){
+  try{
+    const db=window.FB_DB,{doc,setDoc}=window.FB;
+    await setDoc(doc(db,'app','renameRequests'),{r:S.renameRequests,ts:Date.now()});
+  }catch(x){console.error('saveRenameRequests error',x);}
+}
+function rnRenameRequests(){
+  const cnt=document.getElementById('rr-cnt');
+  const el=document.getElementById('rr-list');
+  if(!el)return;
+  if(cnt)cnt.textContent=S.renameRequests.length+'件';
+  if(!S.renameRequests.length){el.innerHTML='<div class="empty">今のところお知らせはありません</div>';return;}
+  el.innerHTML=S.renameRequests.slice().sort((a,b)=>b.ts-a.ts).map(r=>`
+    <div style="padding:10px 0;border-bottom:0.5px solid #eee;">
+      <div style="font-size:13px;"><span style="color:#888;">${escHtml(r.oldName)}</span> → <b>${escHtml(r.newName)}</b></div>
+      <div style="font-size:11px;color:#aaa;margin-top:2px;">${escHtml(r.dr)}さんより ・ ${r.date}</div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <button onclick="applyRenameRequest(${JSON.stringify(r.id)})" class="btn-s" style="padding:6px 12px;font-size:12px;">反映する</button>
+        <button onclick="dismissRenameRequest(${JSON.stringify(r.id)})" style="background:none;border:0.5px solid #f0c0bb;color:#c0392b;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;">削除</button>
+      </div>
+    </div>`).join('');
+}
+function applyRenameRequest(id){
+  const al=document.getElementById('rr-al');
+  const req=S.renameRequests.find(r=>Math.abs(r.id-id)<0.001);
+  if(!req)return;
+  const loc=S.locations.find(l=>l.name===req.oldName);
+  if(!loc){
+    showAl(al,'err',`「${req.oldName}」が見つかりません（すでに名前が変わっているか、削除された可能性があります）`);
+    return;
+  }
+  if(S.locations.find(l=>l.name===req.newName)){
+    showAl(al,'err',`「${req.newName}」はすでに別の回収先として登録されています。先にどちらかの名前を調整してください。`);
+    return;
+  }
+  loc.name=req.newName;
+  S.routes.forEach(r=>{
+    const idx=r.locs.indexOf(req.oldName);
+    if(idx>=0)r.locs[idx]=req.newName;
+  });
+  S.renameRequests=S.renameRequests.filter(r=>Math.abs(r.id-id)>=0.001);
+  sv();saveRenameRequests();rnLocL();rnRenameRequests();
+  showAl(al,'ok',`「${req.oldName}」→「${req.newName}」に反映しました`);
+}
+function dismissRenameRequest(id){
+  S.renameRequests=S.renameRequests.filter(r=>Math.abs(r.id-id)>=0.001);
+  saveRenameRequests();rnRenameRequests();
+}
 
 /* ---- マスタ：手動追加 ---- */
 function rfNlGrpSel(){

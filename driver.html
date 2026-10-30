@@ -287,6 +287,12 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         <input type="text" id="i-nt" placeholder="例: 容器汚れあり・次回増量" autocomplete="off"/>
       </div>
 
+      <div class="fg">
+        <label>店名が変わっていたら、新しい店名 <span style="font-size:11px;color:#aaa;font-weight:400;">（任意・回収先を1件だけ選択時）</span></label>
+        <input type="text" id="i-newname" placeholder="例: 〇〇レストラン 渋谷新館店" autocomplete="off"/>
+        <div style="font-size:11px;color:#aaa;margin-top:4px;">管理者が確認してから、回収先の名前に反映されます。</div>
+      </div>
+
       <div style="display:flex;gap:8px;">
         <button class="btn-p" onclick="addEnt()" style="flex:1;">この場で登録する</button>
         <button class="btn-s" onclick="addPending()" style="flex:1;">予定に追加（数量は後で）</button>
@@ -412,9 +418,10 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
 
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div class="cl" style="margin:0;">登録済み回収先</div>
+        <div class="cl" style="margin:0;">追加済み回収先</div>
         <span id="loc-cnt" style="font-size:12px;color:#888;font-weight:600;"></span>
       </div>
+      <div style="font-size:11px;color:#aaa;margin-bottom:10px;">自分がこの画面から追加した回収先のみ表示されます。</div>
       <div class="sw" style="margin-bottom:10px;">
         <span class="si">&#128269;</span>
         <input type="text" id="loc-srch" placeholder="絞り込み..." oninput="rnLocL()" style="padding-left:40px;width:100%;padding:12px 14px 12px 40px;font-size:15px;border:1.5px solid #ddd;border-radius:10px;background:#fff;"/>
@@ -451,7 +458,8 @@ const S={
   sel:[],
   pending:[],
   routes:[],
-  sheetSync:{enabled:false,url:''}
+  sheetSync:{enabled:false,url:''},
+  renameRequests:[]
 };
 
 /* ---- Firebase同期 ---- */
@@ -655,6 +663,18 @@ function rnSel(){
 function rmSel(n){S.sel=S.sel.filter(x=>x!==n);rnSel();}
 /* ドロップダウンは選択後・検索欄blur後に閉じる */
 
+/* ===== 店名変更のお知らせ ===== */
+async function submitRenameRequest(oldName,newName,dr,date){
+  try{
+    const db=window.FB_DB,{doc,getDoc,setDoc}=window.FB;
+    const rSnap=await getDoc(doc(db,'app','renameRequests'));
+    const existing=rSnap.exists()?(rSnap.data().r||[]):[];
+    existing.push({id:Date.now()+Math.random(),oldName,newName,dr,date,ts:Date.now()});
+    await setDoc(doc(db,'app','renameRequests'),{r:existing,ts:Date.now()});
+    S.renameRequests=existing;
+  }catch(x){console.error('submitRenameRequest error',x);}
+}
+
 /* ===== 登録 ===== */
 function addEnt(){
   const dt=document.getElementById('i-dt').value;
@@ -663,11 +683,13 @@ function addEnt(){
   const am=parseFloat(document.getElementById('i-am').value);
   const cn=parseInt(document.getElementById('i-cn').value)||null;
   const nt=document.getElementById('i-nt').value.trim();
+  const newName=document.getElementById('i-newname').value.trim();
   const al=document.getElementById('ia');
   if(!dt){showAl(al,'err','回収日を選択してください');return;}
   if(!dr||dr===''){showAl(al,'err','ドライバーを選択してください（マスタで登録が必要です）');return;}
   if(!locs.length){showAl(al,'err','回収先を検索して選択してください');return;}
   if(isNaN(am)||am<=0){showAl(al,'err','回収量を入力してください');return;}
+  if(newName&&locs.length!==1){showAl(al,'err','店名変更のお知らせは、回収先を1件だけ選択した時にご利用いただけます');return;}
   const perAm=Math.round(am/locs.length*10)/10;
   const newEntries=[];
   locs.forEach(loc=>{
@@ -686,10 +708,12 @@ function addEnt(){
   document.getElementById('i-am').value='';
   document.getElementById('i-cn').value='';
   document.getElementById('i-nt').value='';
+  document.getElementById('i-newname').value='';
   document.getElementById('lsrc').value='';
   rnSel();
-  showAl(al,'ok','✓ 登録しました：'+locs[0]+' '+am.toFixed(1)+'L');
+  showAl(al,'ok','✓ 登録しました：'+locs[0]+' '+am.toFixed(1)+'L'+(newName?'（店名変更のお知らせも送信しました）':''));
   sv();rnTd();updHdr();pushToSheet(newEntries);
+  if(newName)submitRenameRequest(locs[0],newName,dr,dt);
   /* スクロールをフォームトップへ */
   document.getElementById('ia').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -986,9 +1010,11 @@ function expCSV(){
   copyData();
 }
 
-/* ===== 回収先追加・編集 ===== */
+/* ===== 回収先追加・編集 =====
+   回収先・曜日ルートはドライバー横断で共有されるマスタデータなので、保存の瞬間にapp/masterを
+   読み直してから変更を当てて書き戻す（他の人が同時に加えた変更を上書きしないため） */
 let editingLocName=null;
-function addLoc(){
+async function addLoc(){
   const nm=document.getElementById('nl-nm').value.trim();
   const al=document.getElementById('loc-al');
   if(!nm){showAl(al,'err','回収先名を入力してください');return;}
@@ -999,53 +1025,68 @@ function addLoc(){
   const myDriver=document.getElementById('i-dr').value;
   const wds=[...document.querySelectorAll('.nl-wd:checked')].map(c=>c.value);
 
-  if(editingLocName){
-    if(nm!==editingLocName&&S.locations.find(l=>l.name===nm)){
-      showAl(al,'err',nm+' はすでに別の回収先として登録されています');return;
+  try{
+    const db=window.FB_DB,{doc,getDoc,setDoc}=window.FB;
+    const mSnap=await getDoc(doc(db,'app','master'));
+    const m=mSnap.exists()?mSnap.data():{};
+    const freshLocs=(m.l||[]).slice();
+    const freshRoutes=(m.rt||[]).map(r=>({...r,locs:r.locs.slice()}));
+
+    if(editingLocName){
+      if(nm!==editingLocName&&freshLocs.find(l=>l.name===nm)){
+        showAl(al,'err',nm+' はすでに別の回収先として登録されています');return;
+      }
+      const loc=freshLocs.find(l=>l.name===editingLocName);
+      if(!loc){showAl(al,'err','編集対象が見つかりません（他の人が削除した可能性があります）');cancelLocEdit();return;}
+      const oldName=loc.name;
+      loc.name=nm;loc.cat=cat;loc.addr=addr;loc.grp=grp;loc.ct=ct;
+      if(oldName!==nm){
+        freshRoutes.forEach(r=>{
+          const idx=r.locs.indexOf(oldName);
+          if(idx>=0)r.locs[idx]=nm;
+        });
+      }
+      ['mon','tue','wed','thu','fri'].forEach(wd=>{
+        let route=freshRoutes.find(r=>r.driver===myDriver&&r.wd===wd);
+        const shouldHave=wds.includes(wd);
+        const has=route&&route.locs.includes(nm);
+        if(shouldHave&&!has){
+          if(!route){route={driver:myDriver,wd,locs:[]};freshRoutes.push(route);}
+          route.locs.push(nm);
+        }else if(!shouldHave&&has){
+          route.locs=route.locs.filter(l=>l!==nm);
+        }
+      });
+      await setDoc(doc(db,'app','master'),{...m,l:freshLocs,rt:freshRoutes,ts:Date.now()});
+      S.locations=freshLocs;S.routes=freshRoutes;
+      rnLocL();
+      showAl(al,'ok','「'+nm+'」を更新しました');
+      cancelLocEdit();
+      return;
     }
-    const loc=S.locations.find(l=>l.name===editingLocName);
-    if(!loc){showAl(al,'err','編集対象が見つかりません');cancelLocEdit();return;}
-    const oldName=loc.name;
-    loc.name=nm;loc.cat=cat;loc.addr=addr;loc.grp=grp;loc.ct=ct;
-    if(oldName!==nm){
-      S.routes.forEach(r=>{
-        const idx=r.locs.indexOf(oldName);
-        if(idx>=0)r.locs[idx]=nm;
+
+    if(freshLocs.find(l=>l.name===nm)){showAl(al,'inf',nm+' はすでに登録されています');return;}
+    freshLocs.push({name:nm,cat,addr,grp,ct,addedBy:myDriver,addedAt:Date.now()});
+    if(wds.length){
+      wds.forEach(wd=>{
+        let route=freshRoutes.find(r=>r.driver===myDriver&&r.wd===wd);
+        if(!route){route={driver:myDriver,wd,locs:[]};freshRoutes.push(route);}
+        if(!route.locs.includes(nm))route.locs.push(nm);
       });
     }
-    ['mon','tue','wed','thu','fri'].forEach(wd=>{
-      let route=S.routes.find(r=>r.driver===myDriver&&r.wd===wd);
-      const shouldHave=wds.includes(wd);
-      const has=route&&route.locs.includes(nm);
-      if(shouldHave&&!has){
-        if(!route){route={driver:myDriver,wd,locs:[]};S.routes.push(route);}
-        route.locs.push(nm);
-      }else if(!shouldHave&&has){
-        route.locs=route.locs.filter(l=>l!==nm);
-      }
-    });
-    sv();rnLocL();
-    showAl(al,'ok','「'+nm+'」を更新しました');
-    cancelLocEdit();
-    return;
+    await setDoc(doc(db,'app','master'),{...m,l:freshLocs,rt:freshRoutes,ts:Date.now()});
+    S.locations=freshLocs;S.routes=freshRoutes;
+    document.getElementById('nl-nm').value='';
+    document.getElementById('nl-ad').value='';
+    document.getElementById('nl-grp').value='';
+    document.getElementById('nl-ct2').value='';
+    document.querySelectorAll('.nl-wd').forEach(c=>c.checked=false);
+    rnLocL();
+    showAl(al,'ok','「'+nm+'」を追加しました。入力タブから選択できます。');
+  }catch(x){
+    console.error('addLoc error',x);
+    showAl(al,'err','保存に失敗しました。電波の良い場所でもう一度お試しください。');
   }
-
-  if(S.locations.find(l=>l.name===nm)){showAl(al,'inf',nm+' はすでに登録されています');return;}
-  S.locations.push({name:nm,cat,addr,grp,ct});
-  if(wds.length){
-    wds.forEach(wd=>{
-      let route=S.routes.find(r=>r.driver===myDriver&&r.wd===wd);
-      if(!route){route={driver:myDriver,wd,locs:[]};S.routes.push(route);}
-      if(!route.locs.includes(nm))route.locs.push(nm);
-    });
-  }
-  document.getElementById('nl-nm').value='';
-  document.getElementById('nl-ad').value='';
-  document.getElementById('nl-grp').value='';
-  document.getElementById('nl-ct2').value='';
-  document.querySelectorAll('.nl-wd').forEach(c=>c.checked=false);
-  sv();rnLocL();
-  showAl(al,'ok','「'+nm+'」を追加しました。入力タブから選択できます。');
 }
 
 function startLocEdit(name){
@@ -1081,12 +1122,14 @@ function cancelLocEdit(){
 }
 
 function rnLocL(){
+  const myDriver=document.getElementById('i-dr').value;
+  const mine=S.locations.filter(l=>l.addedBy===myDriver).sort((a,b)=>(b.addedAt||0)-(a.addedAt||0));
   const q=(document.getElementById('loc-srch')||{value:''}).value.trim().toLowerCase();
-  const fl=q?S.locations.filter(l=>l.name.toLowerCase().includes(q)||(l.addr||'').toLowerCase().includes(q)):S.locations;
+  const fl=q?mine.filter(l=>l.name.toLowerCase().includes(q)||(l.addr||'').toLowerCase().includes(q)):mine;
   const cnt=document.getElementById('loc-cnt');
-  if(cnt)cnt.textContent=S.locations.length+'軒';
+  if(cnt)cnt.textContent=mine.length+'件';
   const el=document.getElementById('loc-l');if(!el)return;
-  if(!fl.length){el.innerHTML='<div class="empty">登録された回収先がありません</div>';return;}
+  if(!fl.length){el.innerHTML='<div class="empty">まだ追加した回収先がありません</div>';return;}
   const catCl={'飲食店':'bb','ホテル・旅館':'bp','食品工場':'ba','スーパー':'bg','給食施設':'bg','病院・福祉施設':'bb','その他':'bgg'};
   const badge=(cat)=>`<span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;${
     {'飲食店':'background:#e6effe;color:#1a4faa',
