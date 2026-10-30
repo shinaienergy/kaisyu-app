@@ -263,6 +263,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div class="fg" style="margin:0;"><label>集計対象日</label><input type="date" id="d-dt" onchange="rnDay()"/></div>
     </div>
     <div class="mc2" id="d-mc"></div>
+    <div class="card" id="d-mc-detail" style="display:none;"><div class="cl">総回収量の内訳（ドライバー別）</div><div id="d-mc-detail-body"></div></div>
     <div class="card"><div class="cl">回収先別集計</div><div class="tbl-scroll"><div id="d-lt"></div></div></div>
     <div class="card"><div class="cl">ドライバー別集計</div><div id="d-dvt"></div></div>
     <div class="card"><div class="cl">グループ別集計</div><div id="d-grp"></div></div>
@@ -274,6 +275,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div class="fg" style="margin:0;"><label>集計対象年月</label><input type="month" id="m-mo" onchange="rnMon()"/></div>
     </div>
     <div class="mc2" id="m-mc"></div>
+    <div class="card" id="m-mc-detail" style="display:none;"><div class="cl">月間総量の内訳（ドライバー別）</div><div id="m-mc-detail-body"></div></div>
     <div class="card"><div class="cl">回収先別月次集計</div><div class="tbl-scroll"><div id="m-lt"></div></div></div>
     <div class="card"><div class="cl">グループ別集計</div><div id="m-grp"></div></div>
     <div class="card"><div class="cl">ドライバー別月次集計</div><div id="m-dvt"></div></div>
@@ -1299,13 +1301,47 @@ function toggleDrvDetail(id,rowEl){
     if(arrow)arrow.textContent=open?'▸':'▾';
   }
 }
+function toggleMcDetail(id,tileEl){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  if(tileEl){
+    const arrow=tileEl.querySelector('.drv-arrow');
+    if(arrow)arrow.textContent=open?'▸':'▾';
+  }
+}
+function mcToggle(l,n,u,id){
+  return `<div class="mv" style="cursor:pointer;" onclick="toggleMcDetail('${id}',this)"><div class="mv-l">${l} <span class="drv-arrow" style="font-size:9px;">▸</span></div><div class="mv-n">${n}</div><div class="mv-u">${u}</div></div>`;
+}
+/* ドライバー別（回収先内訳つき）テーブルHTMLを生成。idPrefixは同一画面内で複数描画する場合に衝突しないよう分ける */
+function buildDrvTable(bD,idPrefix,monthly){
+  if(!Object.keys(bD).length)return '<div class="empty">データがありません</div>';
+  const key=d=>monthly?d.t:d.a;
+  const header=monthly
+    ?'<tr><th style="width:24px;"></th><th>ドライバー</th><th>稼働日</th><th>件数</th><th>総量L</th></tr>'
+    :'<tr><th style="width:24px;"></th><th>ドライバー</th><th>件数</th><th>回収量(L)</th></tr>';
+  const body=Object.entries(bD).sort((a,b)=>key(b[1])-key(a[1])).map(([n,d],i)=>{
+    const did=idPrefix+'-'+i;
+    const locRows=Object.entries(d.locs).sort((a,b)=>key(b[1])-key(a[1])).map(([ln,ld])=>
+      monthly
+        ?`<tr><td style="padding-left:18px;color:#555;">${escHtml(ln)}</td><td>${ld.ds.size}</td><td>${ld.c}</td><td style="font-weight:600;">${ld.t.toFixed(1)}</td></tr>`
+        :`<tr><td style="padding-left:18px;color:#555;">${escHtml(ln)}</td><td>${ld.c}</td><td style="font-weight:600;">${ld.a.toFixed(1)}</td></tr>`
+    ).join('');
+    const mainRow=monthly
+      ?`<tr style="cursor:pointer;" onclick="toggleDrvDetail('${did}',this)"><td class="drv-arrow">▸</td><td>${escHtml(n)}</td><td>${d.ds.size}</td><td>${d.c}</td><td style="font-weight:700;">${d.t.toFixed(1)}</td></tr>`
+      :`<tr style="cursor:pointer;" onclick="toggleDrvDetail('${did}',this)"><td class="drv-arrow">▸</td><td>${escHtml(n)}</td><td>${d.c}</td><td style="font-weight:700;">${d.a.toFixed(1)}</td></tr>`;
+    return mainRow+`<tr id="${did}" style="display:none;background:#fafaf7;"><td></td><td colspan="${monthly?4:3}"><table style="width:100%;">${locRows}</table></td></tr>`;
+  }).join('');
+  return `<table><thead>${header}</thead><tbody>${body}</tbody></table>`;
+}
 
 function rnDay(){
   const d=document.getElementById('d-dt').value;
   const es=S.entries.filter(e=>e.date===d);
   const tot=es.reduce((s,e)=>s+e.a,0);
   document.getElementById('d-mc').innerHTML=
-    mc('総回収量',tot.toFixed(1),'L')+mc('回収件数',es.length,'件')+
+    mcToggle('総回収量',tot.toFixed(1),'L','d-mc-detail')+mc('回収件数',es.length,'件')+
     mc('稼働回収先',[...new Set(es.map(e=>e.loc))].length,'箇所')+
     mc('稼働ドライバー',[...new Set(es.map(e=>e.dr))].length,'名');
 
@@ -1328,18 +1364,8 @@ function rnDay(){
     if(!bD[e.dr].locs[e.loc])bD[e.dr].locs[e.loc]={a:0,c:0};
     bD[e.dr].locs[e.loc].a+=e.a;bD[e.dr].locs[e.loc].c++;
   });
-  const e2=document.getElementById('d-dvt');
-  e2.innerHTML=Object.keys(bD).length?
-    '<table><thead><tr><th style="width:24px;"></th><th>ドライバー</th><th>件数</th><th>回収量(L)</th></tr></thead><tbody>'+
-    Object.entries(bD).sort((a,b)=>b[1].a-a[1].a).map(([n,d],i)=>{
-      const did='d-dvt-'+i;
-      const locRows=Object.entries(d.locs).sort((a,b)=>b[1].a-a[1].a).map(([ln,ld])=>
-        `<tr><td style="padding-left:18px;color:#555;">${escHtml(ln)}</td><td>${ld.c}</td><td style="font-weight:600;">${ld.a.toFixed(1)}</td></tr>`
-      ).join('');
-      return `<tr style="cursor:pointer;" onclick="toggleDrvDetail('${did}',this)"><td class="drv-arrow">▸</td><td>${escHtml(n)}</td><td>${d.c}</td><td style="font-weight:700;">${d.a.toFixed(1)}</td></tr>`+
-        `<tr id="${did}" style="display:none;background:#fafaf7;"><td></td><td colspan="3"><table style="width:100%;">${locRows}</table></td></tr>`;
-    }).join('')+'</tbody></table>':
-    '<div class="empty">データがありません</div>';
+  document.getElementById('d-dvt').innerHTML=buildDrvTable(bD,'d-dvt',false);
+  document.getElementById('d-mc-detail-body').innerHTML=buildDrvTable(bD,'d-mct',false);
 
   // グループ別
   const bG={};es.forEach(e=>{const g=e.grp||'（グループなし）';if(!bG[g])bG[g]={a:0,c:0};bG[g].a+=e.a;bG[g].c++;});
@@ -1357,7 +1383,7 @@ function rnMon(){
   const tot=es.reduce((s,e)=>s+e.a,0);
   const days=[...new Set(es.map(e=>e.date))].length;
   document.getElementById('m-mc').innerHTML=
-    mc('月間総量',tot.toFixed(1),'L')+mc('稼働日数',days,'日')+
+    mcToggle('月間総量',tot.toFixed(1),'L','m-mc-detail')+mc('稼働日数',days,'日')+
     mc('総件数',es.length,'件')+mc('回収先数',[...new Set(es.map(e=>e.loc))].length,'箇所');
 
   // 回収先別
@@ -1392,18 +1418,8 @@ function rnMon(){
     if(!bD[e.dr].locs[e.loc])bD[e.dr].locs[e.loc]={t:0,c:0,ds:new Set()};
     bD[e.dr].locs[e.loc].t+=e.a;bD[e.dr].locs[e.loc].c++;bD[e.dr].locs[e.loc].ds.add(e.date);
   });
-  const e2=document.getElementById('m-dvt');
-  e2.innerHTML=Object.keys(bD).length?
-    '<table><thead><tr><th style="width:24px;"></th><th>ドライバー</th><th>稼働日</th><th>件数</th><th>総量L</th></tr></thead><tbody>'+
-    Object.entries(bD).sort((a,b)=>b[1].t-a[1].t).map(([n,d],i)=>{
-      const did='m-dvt-'+i;
-      const locRows=Object.entries(d.locs).sort((a,b)=>b[1].t-a[1].t).map(([ln,ld])=>
-        `<tr><td style="padding-left:18px;color:#555;">${escHtml(ln)}</td><td>${ld.ds.size}</td><td>${ld.c}</td><td style="font-weight:600;">${ld.t.toFixed(1)}</td></tr>`
-      ).join('');
-      return `<tr style="cursor:pointer;" onclick="toggleDrvDetail('${did}',this)"><td class="drv-arrow">▸</td><td>${escHtml(n)}</td><td>${d.ds.size}</td><td>${d.c}</td><td style="font-weight:700;">${d.t.toFixed(1)}</td></tr>`+
-        `<tr id="${did}" style="display:none;background:#fafaf7;"><td></td><td colspan="4"><table style="width:100%;">${locRows}</table></td></tr>`;
-    }).join('')+'</tbody></table>':
-    '<div class="empty">データがありません</div>';
+  document.getElementById('m-dvt').innerHTML=buildDrvTable(bD,'m-dvt',true);
+  document.getElementById('m-mc-detail-body').innerHTML=buildDrvTable(bD,'m-mct',true);
 
   // 日別推移
   const bDy={};es.forEach(e=>{bDy[e.date]=(bDy[e.date]||0)+e.a;});
