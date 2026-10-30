@@ -195,7 +195,10 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div style="text-align:right;">
         <div class="hdr-stat" id="hd-stat"></div>
         <div style="font-size:10px;color:#aaa;margin-top:2px;" id="hd-user"></div>
-        <button onclick="doAdminLogout()" style="background:#333;border:none;color:#aaa;font-size:10px;padding:3px 8px;border-radius:999px;cursor:pointer;margin-top:3px;">ログアウト</button>
+        <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:3px;">
+          <button onclick="hardReload()" style="background:#333;border:none;color:#aaa;font-size:13px;width:22px;height:22px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="最新の状態に更新">&#8635;</button>
+          <button onclick="doAdminLogout()" style="background:#333;border:none;color:#aaa;font-size:10px;padding:3px 8px;border-radius:999px;cursor:pointer;">ログアウト</button>
+        </div>
       </div>
     </div>
   </div>
@@ -691,6 +694,9 @@ function doAdminLogin(){
     document.getElementById('login-err').textContent='ログインできませんでした。管理者アカウントをお使いください。';
     document.getElementById('login-err').style.display='block';
   });
+}
+function hardReload(){
+  location.href=location.pathname+'?_r='+Date.now();
 }
 function doAdminLogout(){
   window.FB_SIGNOUT().then(()=>{
