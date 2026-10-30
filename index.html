@@ -1289,6 +1289,17 @@ function go(t){
 }
 
 /* ---- 日次集計 ---- */
+function toggleDrvDetail(id,rowEl){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'table-row';
+  if(rowEl){
+    const arrow=rowEl.querySelector('.drv-arrow');
+    if(arrow)arrow.textContent=open?'▸':'▾';
+  }
+}
+
 function rnDay(){
   const d=document.getElementById('d-dt').value;
   const es=S.entries.filter(e=>e.date===d);
@@ -1311,11 +1322,23 @@ function rnDay(){
     '<div class="empty">データがありません</div>';
 
   // ドライバー別
-  const bD={};es.forEach(e=>{if(!bD[e.dr])bD[e.dr]={a:0,c:0};bD[e.dr].a+=e.a;bD[e.dr].c++;});
+  const bD={};es.forEach(e=>{
+    if(!bD[e.dr])bD[e.dr]={a:0,c:0,locs:{}};
+    bD[e.dr].a+=e.a;bD[e.dr].c++;
+    if(!bD[e.dr].locs[e.loc])bD[e.dr].locs[e.loc]={a:0,c:0};
+    bD[e.dr].locs[e.loc].a+=e.a;bD[e.dr].locs[e.loc].c++;
+  });
   const e2=document.getElementById('d-dvt');
   e2.innerHTML=Object.keys(bD).length?
-    '<table><thead><tr><th>ドライバー</th><th>件数</th><th>回収量(L)</th></tr></thead><tbody>'+
-    Object.entries(bD).map(([n,d])=>`<tr><td>${n}</td><td>${d.c}</td><td style="font-weight:700;">${d.a.toFixed(1)}</td></tr>`).join('')+'</tbody></table>':
+    '<table><thead><tr><th style="width:24px;"></th><th>ドライバー</th><th>件数</th><th>回収量(L)</th></tr></thead><tbody>'+
+    Object.entries(bD).sort((a,b)=>b[1].a-a[1].a).map(([n,d],i)=>{
+      const did='d-dvt-'+i;
+      const locRows=Object.entries(d.locs).sort((a,b)=>b[1].a-a[1].a).map(([ln,ld])=>
+        `<tr><td style="padding-left:18px;color:#555;">${escHtml(ln)}</td><td>${ld.c}</td><td style="font-weight:600;">${ld.a.toFixed(1)}</td></tr>`
+      ).join('');
+      return `<tr style="cursor:pointer;" onclick="toggleDrvDetail('${did}',this)"><td class="drv-arrow">▸</td><td>${escHtml(n)}</td><td>${d.c}</td><td style="font-weight:700;">${d.a.toFixed(1)}</td></tr>`+
+        `<tr id="${did}" style="display:none;background:#fafaf7;"><td></td><td colspan="3"><table style="width:100%;">${locRows}</table></td></tr>`;
+    }).join('')+'</tbody></table>':
     '<div class="empty">データがありません</div>';
 
   // グループ別
@@ -1363,11 +1386,23 @@ function rnMon(){
     '<div class="empty">グループが設定されていません（回収先にグループ名を登録してください）</div>';
 
   // ドライバー別
-  const bD={};es.forEach(e=>{if(!bD[e.dr])bD[e.dr]={t:0,c:0,ds:new Set()};bD[e.dr].t+=e.a;bD[e.dr].c++;bD[e.dr].ds.add(e.date);});
+  const bD={};es.forEach(e=>{
+    if(!bD[e.dr])bD[e.dr]={t:0,c:0,ds:new Set(),locs:{}};
+    bD[e.dr].t+=e.a;bD[e.dr].c++;bD[e.dr].ds.add(e.date);
+    if(!bD[e.dr].locs[e.loc])bD[e.dr].locs[e.loc]={t:0,c:0,ds:new Set()};
+    bD[e.dr].locs[e.loc].t+=e.a;bD[e.dr].locs[e.loc].c++;bD[e.dr].locs[e.loc].ds.add(e.date);
+  });
   const e2=document.getElementById('m-dvt');
   e2.innerHTML=Object.keys(bD).length?
-    '<table><thead><tr><th>ドライバー</th><th>稼働日</th><th>件数</th><th>総量L</th></tr></thead><tbody>'+
-    Object.entries(bD).map(([n,d])=>`<tr><td>${n}</td><td>${d.ds.size}</td><td>${d.c}</td><td style="font-weight:700;">${d.t.toFixed(1)}</td></tr>`).join('')+'</tbody></table>':
+    '<table><thead><tr><th style="width:24px;"></th><th>ドライバー</th><th>稼働日</th><th>件数</th><th>総量L</th></tr></thead><tbody>'+
+    Object.entries(bD).sort((a,b)=>b[1].t-a[1].t).map(([n,d],i)=>{
+      const did='m-dvt-'+i;
+      const locRows=Object.entries(d.locs).sort((a,b)=>b[1].t-a[1].t).map(([ln,ld])=>
+        `<tr><td style="padding-left:18px;color:#555;">${escHtml(ln)}</td><td>${ld.ds.size}</td><td>${ld.c}</td><td style="font-weight:600;">${ld.t.toFixed(1)}</td></tr>`
+      ).join('');
+      return `<tr style="cursor:pointer;" onclick="toggleDrvDetail('${did}',this)"><td class="drv-arrow">▸</td><td>${escHtml(n)}</td><td>${d.ds.size}</td><td>${d.c}</td><td style="font-weight:700;">${d.t.toFixed(1)}</td></tr>`+
+        `<tr id="${did}" style="display:none;background:#fafaf7;"><td></td><td colspan="4"><table style="width:100%;">${locRows}</table></td></tr>`;
+    }).join('')+'</tbody></table>':
     '<div class="empty">データがありません</div>';
 
   // 日別推移
