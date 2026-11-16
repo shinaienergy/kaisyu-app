@@ -1504,7 +1504,7 @@ function rnMon(){
 
 /* ---- グループセレクタ更新 ---- */
 function rfGrpSel(){
-  const sel=document.getElementById('r-grp-sel');
+  const sel=document.getElementById('r-grp-sel');if(!sel)return;
   sel.innerHTML='<option value="">全店舗（グループ問わず）</option>'+
     S.reportGroups.map(g=>`<option value="${g.name}">${g.name}</option>`).join('');
 }
@@ -1529,8 +1529,8 @@ function genRep(){
   const pe=document.getElementById('r-pe').value;
   const li=document.getElementById('r-li').value;
   const to=document.getElementById('r-to').value;
-  const chainName=document.getElementById('r-chain').value;
-  const grpFilter=document.getElementById('r-grp-sel').value;
+  const chainName=(document.getElementById('r-chain')||{}).value||'';
+  const grpFilter=(document.getElementById('r-grp-sel')||{}).value||'';
   const [yr,mo]=m.split('-');
 
   let es=S.entries.filter(e=>e.date.startsWith(m));
