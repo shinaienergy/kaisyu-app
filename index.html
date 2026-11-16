@@ -909,7 +909,11 @@ function rnGrpLocEditor(justAdded){
   if(!wrap||!el)return;
   const grpName=document.getElementById('rgrp-name').value.trim();
   if(!grpName||!S.reportGroups.some(g=>g.name===grpName)){wrap.style.display='none';return;}
-  const members=S.locations.filter(l=>l.grp===grpName);
+  const members=S.locations.filter(l=>l.grp===grpName).sort((a,b)=>{
+    const aNew=justAdded&&justAdded.includes(a.name);
+    const bNew=justAdded&&justAdded.includes(b.name);
+    return aNew===bNew?0:(aNew?-1:1);
+  });
   wrap.style.display='block';
   if(label)label.textContent=grpName;
   if(cnt)cnt.textContent=members.length+'件';
