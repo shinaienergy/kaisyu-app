@@ -1001,13 +1001,13 @@ function linkLocsToGroup(){
   let grpName=sel.value;
   if(grpName==='__new__'){
     grpName=document.getElementById('lg-grp-new').value.trim();
-    if(!grpName){showAl(al,'err','新しい報告書グループ名を入力してください');return;}
+    if(!grpName){showAl(al,'err','新しい報告書グループ名を入力してください');al.scrollIntoView({behavior:'smooth',block:'center'});return;}
     if(!S.reportGroups.some(g=>g.name===grpName)){
       S.reportGroups.push({name:grpName,co:grpName,person:'',addr:'',note:''});
     }
   }
-  if(!grpName){showAl(al,'err','報告書グループを選択してください');return;}
-  if(!lgSel.length){showAl(al,'err','回収先を1件以上選択してください');return;}
+  if(!grpName){showAl(al,'err','報告書グループを選択してください');al.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  if(!lgSel.length){showAl(al,'err','回収先を1件以上選択してください');al.scrollIntoView({behavior:'smooth',block:'center'});return;}
   let count=0;
   S.locations.forEach(l=>{if(lgSel.includes(l.name)){l.grp=grpName;count++;}});
   sv();rnLocL();rfGrpSel();rnRgrpList();rfRgrpSel();rfLgGrpSel();rfNlGrpSel();
@@ -1017,6 +1017,7 @@ function linkLocsToGroup(){
   sel.value=grpName;
   rnLgMembers();
   showAl(al,'ok',count+'件の回収先を「'+grpName+'」に追加しました');
+  al.scrollIntoView({behavior:'smooth',block:'center'});
 }
 
 const WD_LABEL={mon:'月曜日',tue:'火曜日',wed:'水曜日',thu:'木曜日',fri:'金曜日'};
