@@ -919,7 +919,7 @@ function toggleLgGrpNew(){
   const v=document.getElementById('lg-grp-sel').value;
   document.getElementById('lg-grp-new').style.display=v==='__new__'?'block':'none';
 }
-function rnLgMembers(){
+function rnLgMembers(justAdded){
   const wrap=document.getElementById('lg-members-wrap');
   const el=document.getElementById('lg-members');
   const cnt=document.getElementById('lg-members-cnt');
@@ -930,9 +930,9 @@ function rnLgMembers(){
   wrap.style.display='block';
   if(cnt)cnt.textContent=members.length+'件';
   el.innerHTML=members.length?members.map(l=>`
-    <div class="erow">
+    <div class="erow" style="${justAdded&&justAdded.includes(l.name)?'background:#eaf7ee;border-radius:8px;':''}">
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(l.name)}</div>
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(l.name)}${justAdded&&justAdded.includes(l.name)?' <span style="font-size:10px;color:#1a6b30;font-weight:700;">NEW</span>':''}</div>
         <div style="font-size:10px;color:#888;">${escHtml(l.addr||'')}</div>
       </div>
       <button onclick="removeLocFromGroup(${escHtml(JSON.stringify(l.name))})" class="btn-d" style="padding:5px 10px;font-size:11px;">削除</button>
@@ -1008,16 +1008,16 @@ function linkLocsToGroup(){
   }
   if(!grpName){showAl(al,'err','報告書グループを選択してください');al.scrollIntoView({behavior:'smooth',block:'center'});return;}
   if(!lgSel.length){showAl(al,'err','回収先を1件以上選択してください');al.scrollIntoView({behavior:'smooth',block:'center'});return;}
-  let count=0;
-  S.locations.forEach(l=>{if(lgSel.includes(l.name)){l.grp=grpName;count++;}});
+  const addedNames=[];
+  S.locations.forEach(l=>{if(lgSel.includes(l.name)){l.grp=grpName;addedNames.push(l.name);}});
   sv();rnLocL();rfGrpSel();rnRgrpList();rfRgrpSel();rfLgGrpSel();rfNlGrpSel();
   lgSel=[];rnLgSel();
   document.getElementById('lg-grp-new').value='';
   document.getElementById('lg-grp-new').style.display='none';
   sel.value=grpName;
-  rnLgMembers();
-  showAl(al,'ok',count+'件の回収先を「'+grpName+'」に追加しました');
-  al.scrollIntoView({behavior:'smooth',block:'center'});
+  rnLgMembers(addedNames);
+  showAl(al,'ok','「'+addedNames.join('」「')+'」を「'+grpName+'」に追加しました');
+  document.getElementById('lg-members-wrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 const WD_LABEL={mon:'月曜日',tue:'火曜日',wed:'水曜日',thu:'木曜日',fri:'金曜日'};
