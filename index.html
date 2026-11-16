@@ -582,20 +582,27 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
       <div id="rgrp-list" style="margin-top:14px;"></div>
     </div>
 
-    <!-- 回収先を報告書グループに紐づける -->
+    <!-- グループ修正 -->
     <div class="card">
-      <div class="cl">回収先を報告書グループに紐づける</div>
-      <div class="sn">登録済みの回収先を、あとからまとめて報告書グループに紐づけられます。新しいグループ名を入力すれば、その場で新規グループも作成されます。</div>
+      <div class="cl">グループ修正</div>
+      <div class="sn">報告書グループを選ぶと、そこに登録されている回収先が一覧表示されます。「削除」でそのグループから外せます。下の検索から新しい回収先を追加することもできます。新しいグループ名を入力すれば、その場で新規グループも作成できます。</div>
       <div id="lg-al" class="al"></div>
       <div class="fg"><label>報告書グループ</label>
-        <select id="lg-grp-sel" onchange="toggleLgGrpNew()" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;-webkit-appearance:none;appearance:none;">
+        <select id="lg-grp-sel" onchange="toggleLgGrpNew();rnLgMembers();" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;-webkit-appearance:none;appearance:none;">
           <option value="">--- 選択してください ---</option>
           <option value="__new__">＋ 新しい報告書グループを作成...</option>
         </select>
         <input type="text" id="lg-grp-new" placeholder="新しい報告書グループ名" style="display:none;margin-top:6px;width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;"/>
       </div>
+      <div id="lg-members-wrap" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 8px;">
+          <label style="font-size:13px;font-weight:600;">このグループの回収先</label>
+          <span id="lg-members-cnt" style="font-size:12px;color:#888;font-weight:600;"></span>
+        </div>
+        <div id="lg-members" style="margin-bottom:14px;"></div>
+      </div>
       <div class="fg">
-        <label>紐づける回収先（複数選択可）</label>
+        <label>追加する回収先（複数選択可）</label>
         <div class="sw">
           <span class="si">&#128269;</span>
           <input type="text" id="lg-src" placeholder="店名・住所・グループ名で検索..." oninput="srchLgLoc()" onfocus="srchLgLoc()" autocomplete="off"/>
@@ -603,7 +610,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         <div class="dd" id="lg-dd"></div>
         <div class="sel-tags" id="lg-sel-tags"></div>
       </div>
-      <button class="btn-s" onclick="linkLocsToGroup()" style="width:100%;padding:11px;">紐づける</button>
+      <button class="btn-s" onclick="linkLocsToGroup()" style="width:100%;padding:11px;">追加する</button>
     </div>
 
     <!-- データ管理 -->
@@ -897,7 +904,7 @@ document.addEventListener('click',e=>{
     document.getElementById('rt-dd')&&document.getElementById('rt-dd').classList.remove('open');
 });
 
-/* ---- 回収先を報告書グループに紐づける ---- */
+/* ---- グループ修正（回収先の追加・削除） ---- */
 let lgSel=[];
 let lgSearchHits=[];
 function rfLgGrpSel(){
@@ -911,6 +918,31 @@ function rfLgGrpSel(){
 function toggleLgGrpNew(){
   const v=document.getElementById('lg-grp-sel').value;
   document.getElementById('lg-grp-new').style.display=v==='__new__'?'block':'none';
+}
+function rnLgMembers(){
+  const wrap=document.getElementById('lg-members-wrap');
+  const el=document.getElementById('lg-members');
+  const cnt=document.getElementById('lg-members-cnt');
+  if(!wrap||!el)return;
+  const grpName=document.getElementById('lg-grp-sel').value;
+  if(!grpName||grpName==='__new__'){wrap.style.display='none';return;}
+  const members=S.locations.filter(l=>l.grp===grpName);
+  wrap.style.display='block';
+  if(cnt)cnt.textContent=members.length+'件';
+  el.innerHTML=members.length?members.map(l=>`
+    <div class="erow">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(l.name)}</div>
+        <div style="font-size:10px;color:#888;">${escHtml(l.addr||'')}</div>
+      </div>
+      <button onclick="removeLocFromGroup(${JSON.stringify(l.name)})" class="btn-d" style="padding:5px 10px;font-size:11px;">削除</button>
+    </div>`).join(''):'<div class="empty">このグループにはまだ回収先がありません</div>';
+}
+function removeLocFromGroup(name){
+  const loc=S.locations.find(l=>l.name===name);
+  if(!loc)return;
+  loc.grp='';
+  sv();rnLocL();rnLgMembers();rfGrpSel();rnRgrpList();
 }
 function srchLgLoc(){
   const q=document.getElementById('lg-src').value.trim().toLowerCase();
@@ -982,8 +1014,9 @@ function linkLocsToGroup(){
   lgSel=[];rnLgSel();
   document.getElementById('lg-grp-new').value='';
   document.getElementById('lg-grp-new').style.display='none';
-  sel.value='';
-  showAl(al,'ok',count+'件の回収先を「'+grpName+'」に紐づけました');
+  sel.value=grpName;
+  rnLgMembers();
+  showAl(al,'ok',count+'件の回収先を「'+grpName+'」に追加しました');
 }
 
 const WD_LABEL={mon:'月曜日',tue:'火曜日',wed:'水曜日',thu:'木曜日',fri:'金曜日'};
