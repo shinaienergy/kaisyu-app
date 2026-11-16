@@ -826,7 +826,7 @@ function pickFromDD(idx){
 }
 function rnSel(){
   document.getElementById('sloc').innerHTML=S.sel.map(n=>
-    `<span class="tag">${escHtml(n)}<span class="tx" onclick="rmSel(${JSON.stringify(n)})">×</span></span>`
+    `<span class="tag">${escHtml(n)}<span class="tx" onclick="rmSel(${escHtml(JSON.stringify(n))})">×</span></span>`
   ).join('');
 }
 function rmSel(n){S.sel=S.sel.filter(x=>x!==n);rnSel();}
@@ -880,7 +880,7 @@ function pickFromRtDD(idx){
 }
 function rnRtSel(){
   document.getElementById('rt-sel-tags').innerHTML=rtSel.map(n=>
-    `<span class="tag">${escHtml(n)}<span class="tx" onclick="rmRtSel(${JSON.stringify(n)})">×</span></span>`
+    `<span class="tag">${escHtml(n)}<span class="tx" onclick="rmRtSel(${escHtml(JSON.stringify(n))})">×</span></span>`
   ).join('');
 }
 function rmRtSel(n){rtSel=rtSel.filter(x=>x!==n);rnRtSel();}
@@ -935,7 +935,7 @@ function rnLgMembers(){
         <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(l.name)}</div>
         <div style="font-size:10px;color:#888;">${escHtml(l.addr||'')}</div>
       </div>
-      <button onclick="removeLocFromGroup(${JSON.stringify(l.name)})" class="btn-d" style="padding:5px 10px;font-size:11px;">削除</button>
+      <button onclick="removeLocFromGroup(${escHtml(JSON.stringify(l.name))})" class="btn-d" style="padding:5px 10px;font-size:11px;">削除</button>
     </div>`).join(''):'<div class="empty">このグループにはまだ回収先がありません</div>';
 }
 function removeLocFromGroup(name){
@@ -971,7 +971,7 @@ function pickFromLgDD(idx){
 }
 function rnLgSel(){
   document.getElementById('lg-sel-tags').innerHTML=lgSel.map(n=>
-    `<span class="tag">${escHtml(n)}<span class="tx" onclick="rmLgSel(${JSON.stringify(n)})">×</span></span>`
+    `<span class="tag">${escHtml(n)}<span class="tx" onclick="rmLgSel(${escHtml(JSON.stringify(n))})">×</span></span>`
   ).join('');
 }
 function rmLgSel(n){lgSel=lgSel.filter(x=>x!==n);rnLgSel();}
