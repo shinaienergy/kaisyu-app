@@ -463,8 +463,15 @@ const S={
   renameRequests:[]
 };
 
-/* ---- Firebase同期 ---- */
-async function sv(){
+/* ---- Firebase同期 ----
+   連続して保存操作をすると非同期処理が重なり、後から始まった処理が先に終わって
+   古い内容で上書きしてしまうことがあるため、保存は必ず1つずつ順番に実行する。 */
+let svQueue=Promise.resolve();
+function sv(){
+  svQueue=svQueue.then(doSv);
+  return svQueue;
+}
+async function doSv(){
   try{
     const db=window.FB_DB,{doc,getDoc,setDoc}=window.FB;
     const myDriver=document.getElementById('i-dr').value;
