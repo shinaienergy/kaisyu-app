@@ -120,12 +120,17 @@ tr:last-child td{border-bottom:none;}
 /* スクロールヒント */
 .scroll-hint{font-size:10px;color:#bbb;text-align:right;padding:2px 0 6px;}
 
+@page{margin:10mm 14mm;}
 @media print{
   body{background:#fff;}
   .app{max-width:100%;padding:0;}
   .tab-bar,.btn-grp,.btn-p,.btn-s,.btn-d,.hdr,.no-print,#sync-status,.card:not(#print-target){display:none!important;}
   #print-target{display:block!important;border:none;padding:0;}
-  .rep-wrap{border:none;padding:0;}
+  .rep-wrap{border:none;padding:0;line-height:1.5;}
+  .rep-wrap h2{margin-bottom:6px;}
+  .rep-wrap h3{margin:10px 0 5px;}
+  .rep-wrap .divider{margin:8px 0;}
+  .rep-footer{margin-top:0!important;}
 }
 </style>
 <script type="module">
