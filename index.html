@@ -505,7 +505,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
 
     <!-- 手動追加 -->
     <div class="card">
-      <div class="cl">回収先 手動追加</div>
+      <div class="cl" id="loc-form-title">回収先 手動追加</div>
       <div class="r2">
         <div class="fg"><label>回収先名 *</label><input type="text" id="nl-nm" placeholder="〇〇レストラン"/></div>
         <div class="fg"><label>カテゴリ</label>
@@ -526,7 +526,7 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
         </div>
       </div>
       <div class="fg"><label>担当者（任意）</label><input type="text" id="nl-ct2" placeholder="田中様"/></div>
-      <div class="fg">
+      <div class="fg" id="nl-route-section">
         <label>標準ルートへの登録（任意）</label>
         <div class="sn" style="margin:0 0 8px;">ドライバーと曜日を選ぶと、そのドライバーの曜日デフォルトルートにこの回収先が自動で追加され、次回からその曜日の「本日の標準ルートを追加」に表示されます。</div>
         <select id="nl-route-dr" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:9px;background:#fff;-webkit-appearance:none;appearance:none;margin-bottom:8px;">
@@ -540,7 +540,10 @@ window.FB_SIGNIN = () => signInWithPopup(auth, provider);
           <label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" class="nl-wd" value="fri"/> 金</label>
         </div>
       </div>
-      <button class="btn-s" onclick="addLoc()" style="width:100%;padding:11px;">追加する</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-s" id="loc-save-btn" onclick="addLoc()" style="flex:1;padding:11px;">追加する</button>
+        <button class="btn-s" id="loc-cancel-btn" onclick="cancelLocEdit()" style="display:none;padding:11px 14px;">キャンセル</button>
+      </div>
     </div>
 
     <!-- 登録済み一覧 -->
@@ -1891,6 +1894,7 @@ function rfNlRouteDrSel(){
     S.drivers.map(d=>`<option value="${d}">${d}</option>`).join('');
   if(cur&&[...sel.options].some(o=>o.value===cur))sel.value=cur;
 }
+let editingLocName=null;
 function addLoc(){
   const nm=document.getElementById('nl-nm').value.trim();
   if(!nm){return;}
@@ -1904,6 +1908,26 @@ function addLoc(){
       S.reportGroups.push({name:grp,co:grp,person:'',addr:'',note:''});
     }
   }
+
+  if(editingLocName){
+    if(nm!==editingLocName&&S.locations.find(l=>l.name===nm)){
+      alert(nm+' はすでに別の回収先として登録されています');return;
+    }
+    const loc=S.locations.find(l=>l.name===editingLocName);
+    if(!loc){alert('編集対象が見つかりません');cancelLocEdit();return;}
+    const oldName=loc.name;
+    loc.name=nm;loc.cat=cat;loc.addr=addr;loc.grp=grp;loc.ct=ct;
+    if(oldName!==nm){
+      S.routes.forEach(r=>{
+        const idx=r.locs.indexOf(oldName);
+        if(idx>=0)r.locs[idx]=nm;
+      });
+    }
+    sv();rnLocL();updHdr();rfGrpSel();rnRgrpList();rfRgrpSel();rnGrpLocEditor();rfNlGrpSel();rnRouteList();
+    cancelLocEdit();
+    return;
+  }
+
   if(S.locations.find(l=>l.name===nm)){
     alert(nm+' はすでに登録されています');return;
   }
@@ -1932,6 +1956,40 @@ function addLoc(){
   if(routeAdded>0)rnRouteList();
 }
 
+function startLocEdit(name){
+  const loc=S.locations.find(l=>l.name===name);
+  if(!loc)return;
+  editingLocName=name;
+  document.getElementById('nl-nm').value=loc.name;
+  document.getElementById('nl-ct').value=loc.cat;
+  document.getElementById('nl-ad').value=loc.addr||'';
+  document.getElementById('nl-ct2').value=loc.ct||'';
+  rfNlGrpSel();
+  document.getElementById('nl-grp-sel').value=loc.grp||'';
+  document.getElementById('nl-grp-new').value='';
+  document.getElementById('nl-grp-new').style.display='none';
+  document.getElementById('nl-route-section').style.display='none';
+  document.getElementById('loc-form-title').textContent='「'+name+'」を編集';
+  document.getElementById('loc-save-btn').textContent='更新する';
+  document.getElementById('loc-cancel-btn').style.display='block';
+  document.getElementById('nl-nm').scrollIntoView({behavior:'smooth',block:'center'});
+  document.getElementById('nl-nm').focus();
+}
+
+function cancelLocEdit(){
+  editingLocName=null;
+  document.getElementById('nl-nm').value='';
+  document.getElementById('nl-ad').value='';
+  document.getElementById('nl-grp-sel').value='';
+  document.getElementById('nl-grp-new').value='';
+  document.getElementById('nl-grp-new').style.display='none';
+  document.getElementById('nl-ct2').value='';
+  document.getElementById('nl-route-section').style.display='block';
+  document.getElementById('loc-form-title').textContent='回収先 手動追加';
+  document.getElementById('loc-save-btn').textContent='追加する';
+  document.getElementById('loc-cancel-btn').style.display='none';
+}
+
 /* ---- 回収先一覧表示 ---- */
 function rnLocL(){
   const q=(document.getElementById('ms')||{value:''}).value.trim().toLowerCase();
@@ -1945,11 +2003,12 @@ function rnLocL(){
     const realIdx=S.locations.indexOf(l);
     return`<div class="erow">
     <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.name}</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">${l.grp?'['+l.grp+'] ':''}<span style="color:#aaa;">${l.addr||''}${l.ct?' · '+l.ct:''}</span></div>
+      <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(l.name)}</div>
+      <div style="font-size:10px;color:#888;margin-top:2px;">${l.grp?'['+escHtml(l.grp)+'] ':''}<span style="color:#aaa;">${escHtml(l.addr||'')}${l.ct?' · '+escHtml(l.ct):''}</span></div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px;">
       <span class="badge ${catCl[l.cat]||'bgg'}">${l.cat}</span>
+      <button onclick="startLocEdit(${escHtml(JSON.stringify(l.name))})" style="background:#f5f5f0;border:none;color:#555;border-radius:6px;padding:5px 9px;font-size:11px;cursor:pointer;">編集</button>
       <button onclick="rmLoc(${realIdx})" class="btn-d" style="padding:5px 10px;font-size:11px;">削除</button>
     </div>
   </div>`;}).join('')+
