@@ -115,6 +115,7 @@ tr:last-child td{border-bottom:none;}
 .rep-wrap p{font-size:11px;color:#333;margin-bottom:4px;}
 .rep-wrap table{font-size:11px;}
 .rep-wrap .divider{border:none;border-top:1px solid #eee;margin:14px 0;}
+.rep-footer{page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;}
 
 /* スクロールヒント */
 .scroll-hint{font-size:10px;color:#bbb;text-align:right;padding:2px 0 6px;}
@@ -2356,13 +2357,15 @@ function genGrpRep(){
       </tr>
     </table>
 
-    <p style="font-size:12px;">ご不明点、何かお気づきの際はご連絡お待ちしております。</p>
+    <div class="rep-footer">
+      <p style="font-size:12px;">ご不明点、何かお気づきの際はご連絡お待ちしております。</p>
 
-    <hr class="divider"/>
-    <div style="text-align:right;font-size:12px;line-height:2;margin-top:14px;">
-      <p style="font-weight:600;">${co}</p>
-      <p>045-459-5741</p>
-      ${pe?`<p>担当者：${pe}</p>`:''}
+      <hr class="divider"/>
+      <div style="text-align:right;font-size:12px;line-height:2;margin-top:14px;">
+        <p style="font-weight:600;">${co}</p>
+        <p>045-459-5741</p>
+        ${pe?`<p>担当者：${pe}</p>`:''}
+      </div>
     </div>
   </div>
   </div>`;
